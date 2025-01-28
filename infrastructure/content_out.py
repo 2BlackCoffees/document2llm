@@ -43,8 +43,7 @@ class ContentOut(IContentOut):
         title_anchor: str = re.sub(r'\s', '-', title_name.lower()) 
         title: str = f'{"#" * (title_level + 1)} {title_name}'
         self.__append_log(title)
-        if len(title_anchor) < 50:
-            self.toc.append(f'{"    " * max(title_level - 1, 0)}{self.title_level_number[new_level]}. [{title_name}](#{title_anchor})\n')
+        self.toc.append(f'{"    " * max(title_level - 1, 0)}{self.title_level_number[new_level]}. [{title_name}](#{title_anchor})\n')
 
         self.last_title_level = new_level
 

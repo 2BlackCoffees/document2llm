@@ -25,8 +25,8 @@ class LLMAccess:
         self.model_name = model_name # "llama3-70b"  # or use gpt-4o-mini, gpt-4o as per access requested
 
         self.client = OpenAI(
-            # base_url=os.getenv("OPENAI_BASE_URL"),
-            base_url="https://api.openai.com/v1"
+            base_url=os.getenv("OPENAI_BASE_URL"),
+            # base_url="https://api.openai.com/v1"
             # api_key=os.getenv("OPENAI_API_KEY") is default
         )
 

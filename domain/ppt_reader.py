@@ -127,6 +127,20 @@ class PPTReader:
 
         return PPTReader.__encapsulate_shape(shape, text, json_shape)
 
+    def create_title(slide_number: int, title_value: str) -> Dict:
+        shape: Dict = {
+            'left': 0,
+            'right': 0,            
+            'width': len(title_value),
+            'height': 10,
+        }
+        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape)
+        json_shape["shape"]["type"] = str(MSO_SHAPE_TYPE.TEXT_BOX)
+        json_shape["shape"]["is_title"] = "True"
+        json_shape["shape"]["text"] = title_value
+        return PPTReader.__encapsulate_shape(shape, title_value, json_shape)
+
+
     def get_sorted_shapes_by_pos_y(shapes: List) -> List:
         return sorted(shapes, key = lambda shape_dict: shape_dict['y'])
 

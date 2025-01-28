@@ -38,23 +38,31 @@ class PPT2GPT:
             self.logger.warning(f"Caught exception {err=}\n {type(err)=}\n {traceback.print_exc()}\n Leaving application.")
         self.content_out.flush_and_close()
 
-    def __get_slide_details(self, sorted_shapes: List, slide_number: int):
-            title_found: bool = False
+    def __get_title_details(self, shape: Dict):
+        self.logger.debug(f"Shape for title: {pformat(shape)}")
+        title =  re.sub(r'^\s*', '', f"{shape['json']['shape']['text']}")      
+        title =  re.sub(r'\n', '', title)      
+        title =  re.sub(r'\s*$', '', title)      
+        slide_info = f"Slide number {shape['json']['shape']['slide_number']} {title}"
+        self.logger.info(slide_info)
+        return title, slide_info
+
+    def __get_slide_details(self, sorted_shapes: List, slide_number: int, shape_title: Dict):
             slide_shapes_content: List = [] # self.utils.get_llm_instructions() + "\n"
             title: str = ''
             slide_info: str = ''
             reduced_slide_text: List = []
             pattern = re.compile("\S")
+            title_found: bool = False
+            if shape_title is not None:
+                title, slide_info = self.__get_title_details(shape_title)
+                title_found = True
+                self.logger.debug(f'Found shape title: {pformat(shape_title)}')
             for shape in sorted_shapes:
                 if (not title_found):
                     self.logger.debug(f'Searching if shape fits for a title: {pformat(shape)}')
-                    self.logger.debug(f"len(shape['raw_text'])={len(shape['raw_text'])} > 0 and shape['json']['shape']['type'] = {shape['json']['shape']['type']} in [{str(MSO_SHAPE_TYPE.TEXT_BOX)}, {str(MSO_SHAPE_TYPE.GROUP)}]")
                     if len(shape['raw_text']) > 0 and shape['json']['shape']['type'] in [str(MSO_SHAPE_TYPE.TEXT_BOX), str(MSO_SHAPE_TYPE.GROUP), str(MSO_SHAPE_TYPE.PLACEHOLDER)] and pattern.match(shape['raw_text']): 
-                        title =  re.sub(r'^\s*', '', f"{shape['json']['shape']['text']}")      
-                        title =  re.sub(r'\n', '', title)      
-                        title =  re.sub(r'\s*$', '', title)      
-                        slide_info = f"Slide number {shape['json']['shape']['slide_number']} {title}"
-                        self.logger.info(slide_info)
+                        title, slide_info = self.__get_title_details(shape)
                         shape['json']['shape']["is_title"] = "True"
                         title_found = True
                 slide_shapes_content.append(shape['json']['shape'])
@@ -103,10 +111,10 @@ class PPT2GPT:
  
             print(f"Analyzing slide number {slide_number}")
  
-            data_in_slide: list = [] 
+            shape_descriptions: list = [] 
             for shape in slide.shapes:
                 if shape.has_text_frame:
-                    data_in_slide.append(PPTReader.get_text_box_info(slide_number, shape))
+                    shape_descriptions.append(PPTReader.get_text_box_info(slide_number, shape))
  
                 elif shape.has_table: 
                     table = shape.table
@@ -120,23 +128,39 @@ class PPT2GPT:
                               table_elements.append({'row': row_idx, 'col': col_idx, 'text': text})
                               table_str += text + "|"
  
-                    data_in_slide.append(PPTReader.get_table_info(slide_number, shape, table, table_elements, table_str))
+                    shape_descriptions.append(PPTReader.get_table_info(slide_number, shape, table, table_elements, table_str))
  
                 elif shape.shape_type == MSO_SHAPE_TYPE.GROUP: 
-                    data_in_slide.append(PPTReader.get_group_info(slide_number, shape))
+                    shape_descriptions.append(PPTReader.get_group_info(slide_number, shape))
                
                 else: 
-                    data_in_slide.append(PPTReader.get_shape_type_info(slide_number, shape))
+                    shape_descriptions.append(PPTReader.get_shape_type_info(slide_number, shape))
  
-            sorted_shapes: List = PPTReader.get_sorted_shapes_by_pos_y(data_in_slide)
+            title_value: str = None
+            shape_title: Dict = None
+            title_found: bool = False
+            if hasattr(slide.shapes, "title") and hasattr(slide.shapes.title, "text") and slide.shapes.title.text is not None and len(slide.shapes.title.text) > 0:
+                title_value = slide.shapes.title.text
+                for shape_description in shape_descriptions:
+                    if shape_description["raw_text"] == title_value:
+                        shape_title = shape_description
+                        shape_title["json"]["shape"]["is_title"] = True
+                        title_found = True
+                if not title_found:
+                    shape_description: Dict = PPTReader.create_title(slide_number, title_value)
+                    shape_title = shape_description
+                    shape_descriptions.append(shape_description)
 
-            slide_shapes_content, title, slide_info, reduced_slide_text = self.__get_slide_details(sorted_shapes, slide_number)
+            sorted_shapes: List = PPTReader.get_sorted_shapes_by_pos_y(shape_descriptions)
+
+            slide_shapes_content, title, slide_info, reduced_slide_text = self.__get_slide_details(sorted_shapes, slide_number, shape_title)
             slide_content: Dict = {
                 "slide_info": slide_info,
                 "title": title,
                 "shapes": slide_shapes_content,
                 "reduced_slide_text": reduced_slide_text
             }
+            #title = re.sub(r'[^\w\d]', ' ', title)
             self.content_out.add_title(1, f"Analyzing slide {slide_number} {title}")
 
             if len(self.selected_text_slide_requests) > 0:
