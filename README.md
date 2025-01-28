@@ -1,11 +1,17 @@
-# PPT Review using LLM
 
-This Python program is designed to review a PowerPoint presentation (PPT) using a Large Language Model (LLM). It leverages the power of LLMs to analyze and provide feedback on the content, structure, and overall quality of the presentation.
+# PPT Review using LLM: A Configurable Python Program
+
+This Python script utilizes a Large Language Model (LLM) to review and provide feedback on PowerPoint presentations (PPT). The program analyzes the content, structure, and overall quality of the presentation, offering a comprehensive review.
+
 
 ## Table of Contents
 
-- [PPT Review using LLM](#ppt-review-using-llm)
+- [PPT Review using LLM: A Configurable Python Program](#ppt-review-using-llm-a-configurable-python-program)
   - [Table of Contents](#table-of-contents)
+  - [Important Security Consideration](#important-security-consideration)
+  - [Review Approaches](#review-approaches)
+  - [Extensibility](#extensibility)
+  - [Error Handling](#error-handling)
   - [Prerequisites](#prerequisites)
   - [Environment Variables](#environment-variables)
   - [Usage](#usage)
@@ -18,14 +24,42 @@ This Python program is designed to review a PowerPoint presentation (PPT) using 
   - [Example Use Cases](#example-use-cases)
   - [Troubleshooting](#troubleshooting)
 
+## Important Security Consideration
+Please note that this script is highly configurable and should only be used with an LLM endpoint that ensures the privacy and security of your requests, especially when dealing with confidential information.
+
+## Review Approaches
+The program offers multiple review approaches, including:
+
+* **Slide-by-Slide Text Review**: Analyzes the text content of each slide individually.
+* **Artistic Colours and Disposition Review**: Evaluates the use of colors and layout, taking into account personal preferences and divergences.
+* **Flow and Content Review**: Examines the overall flow and content of the entire presentation.
+  
+## Extensibility
+The script is designed to be extensible, allowing users to create new custom requests that can be integrated into any of the above analysis. To achieve this, a JSON file must be created with the following schema:
+
+```json
+[
+    {
+        "request_name": "My request name",
+        "request": "Detail your request here."
+    }
+]
+```
+This JSON file must be referenced using an environment variable. Please see the documentation for more information on this process.
+
+## Error Handling
+The program incorporates a backoff retry mechanism out of the box. However, if the number of tokens exceeds the limit, the script will stop executing. Currently, the only solution is to split the presentation into smaller parts. Note that token counting is not implemented, as this feature depends on the specific LLM being used.
+
 ## Prerequisites
 
 Ensure that Python3 and openai libraries are installed.
+Run `pip install -r magic-document-enhancer/requirements.txt`
 
 ## Environment Variables
 
 The following environment variables are required to run the program:
 
+* `OPENAI_BASE_URL`: The URL adress of your LLM (For example: `https://api.openai.com/v1`) 
 * `OPENAI_API_KEY`: Your OpenAI API key
 * `PPT2LLM_REQUESTS_SLIDE_TEXT`: Path to the JSON file containing your additional requests for text in slide per slide 
 * `PPT2LLM_REQUESTS_SLIDE_ARTISTIC`: Path to the JSON file containing your additional requests for artistic review in slide per slide 
@@ -92,6 +126,7 @@ The program uses the `llama3-70b` LLM model by default. You can specify a differ
 python ppt2gpt.py --text_slide_requests 0,1,2 --deck_requests 0,1,2,3 presentation.pptx
 Review a PPT for artistic and expert feedback:
 python ppt2gpt.py --artistic_slide_requests 0,1,2 --deck_requests 5,6,7,8,9 presentation.pptx
+```
 
 ## Troubleshooting
 
