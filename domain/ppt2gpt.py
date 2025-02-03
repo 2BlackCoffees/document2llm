@@ -7,16 +7,16 @@ from logging import Logger
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from domain.ichecker import IChecker, DeckChecker, ArtisticSlideChecker, TextSlideChecker
-from domain.llmaccess import LLMAccess
+from domain.allm_access import AbstractLLMAccess
 from domain.llm_utils import LLMUtils
 from domain.ppt_reader import PPTReader
 from domain.icontent_out import IContentOut
 
 class PPT2GPT: 
-    def __init__(self, document_path: str, slides_to_skip: List, detailed_analysis: bool, reviewer_name: str, \
-                 simulate_calls_only: bool, logger: Logger, content_out: IContentOut, llm_utils: LLMUtils, \
+    def __init__(self, document_path: str, slides_to_skip: List, \
+                 logger: Logger, content_out: IContentOut, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
-                 selected_deck_requests: List, model_name: str, consider_bullets_for_crlf: bool= True):
+                 selected_deck_requests: List, llm_access: AbstractLLMAccess, consider_bullets_for_crlf: bool= True):
         self.content_out = content_out
         self.logger = logger
         self.document =  Presentation(document_path)
@@ -24,13 +24,10 @@ class PPT2GPT:
         self.document_path = document_path
         self.crlf_replacement = " * " if consider_bullets_for_crlf else " "
         self.slides_to_skip = slides_to_skip
-        self.detailed_analysis = detailed_analysis
-        self.reviewer_name = reviewer_name
-        self.simulate_calls_only = simulate_calls_only
         self.selected_text_slide_requests = selected_text_slide_requests
         self.selected_artistic_slide_requests = selected_artistic_slide_requests
         self.selected_deck_requests = selected_deck_requests
-        self.model_name = model_name
+        self.llm_access = llm_access
 
         try:
             self.__ppt2gpt()
@@ -72,26 +69,10 @@ class PPT2GPT:
                 self.logger.debug(pformat(sorted_shapes))
             return slide_shapes_content, title, slide_info, reduced_slide_text
     
-    def __send_llm_slide_requests(self, slide_content: List, checker: IChecker) -> None:
-            llm_access = LLMAccess(self.logger, self.detailed_analysis, \
-                                   self.reviewer_name, self.simulate_calls_only,  
-                                   checker, self.model_name)
+    def __send_llm_requests_and_expand_output(self, content_to_check: List) -> None:
 
-            result = llm_access.check(slide_content["shapes"])
+            result = self.llm_access.check(content_to_check)
 
-            for response in result:
-                self.content_out.document(response['request_name'])
-                self.content_out.document(response['response'])
-
-
-    def __send_llm_deck_requests(self, deck_content: List, checker: IChecker):
-            formatted_deck_content_list: Dict = [ f'Slide {slide_number + 1}, {slide_content["title"]}:\n{json.dumps(slide_content["reduced_slide_text"])}' \
-                                                   for slide_number, slide_content in enumerate(deck_content) ]
-            llm_access = LLMAccess(self.logger, self.detailed_analysis, \
-                                   self.reviewer_name, self.simulate_calls_only,  
-                                   checker, self.model_name)
-
-            result = llm_access.check(formatted_deck_content_list)
             for response in result:
                 self.content_out.add_title(2, response['request_name'])
                 self.content_out.document(response['response'])
@@ -109,7 +90,7 @@ class PPT2GPT:
                 self.logger.info(f'Skipping hidden slide number {slide_number}')
                 continue
  
-            print(f"Analyzing slide number {slide_number}")
+            self.logger.info(f"Analyzing slide number {slide_number}")
  
             shape_descriptions: list = [] 
             for shape in slide.shapes:
@@ -166,17 +147,22 @@ class PPT2GPT:
             if len(self.selected_text_slide_requests) > 0:
                 self.content_out.add_title(2, f"Check of text content for slide {slide_number}")
                 checker: IChecker = TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
-                self.__send_llm_slide_requests(slide_content, checker)
+                self.llm_access.set_checker(checker)
+                self.__send_llm_requests_and_expand_output(slide_content["shapes"])
 
             if len(self.selected_artistic_slide_requests) > 0:
                 self.content_out.add_title(2, f"Check of artistic content for slide {slide_number}")
                 checker: IChecker = ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
-                self.__send_llm_slide_requests(slide_content, checker)
+                self.llm_access.set_checker(checker)
+                self.__send_llm_requests_and_expand_output(slide_content["shapes"])
             deck_content.append(slide_content)
 
         if len(self.selected_deck_requests) > 0:
             self.content_out.add_title(1, f"Check of text content and flow for the whole deck")
+            formatted_deck_content_list: List = [ f'Slide {slide_number + 1}, {slide_content["title"]}:\n{json.dumps(slide_content["reduced_slide_text"])}' \
+                                                  for slide_number, slide_content in enumerate(deck_content) ]
             checker: IChecker = DeckChecker(self.llm_utils, self.selected_deck_requests, f' (Deck)', f' (Deck)')
-            self.__send_llm_deck_requests(deck_content, checker)
+            self.llm_access.set_checker(checker)
+            self.__send_llm_requests_and_expand_output(formatted_deck_content_list)
 
         

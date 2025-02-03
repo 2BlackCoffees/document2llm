@@ -6,6 +6,11 @@ import logging
 from typing import List
 from domain.llm_utils import LLMUtils
 from domain.icontent_out import IContentOut
+from domain.allm_access import AbstractLLMAccess
+from infrastructure.llm_access import LLMAccess
+from infrastructure.llm_access_detailed import LLMAccessDetailed
+from infrastructure.llm_access_simulate import LLMAccessSimulateCalls
+from infrastructure.llm_access_detailed_simulate import LLMAccessDetailedSimulateCalls
 from infrastructure.content_out import ContentOut
 from domain.ppt2gpt import PPT2GPT
 
@@ -41,7 +46,12 @@ class ApplicationService:
         task_name: str = "Detailed Review" if detailed_analysis else "Review"
         content_out = ContentOut(f"{task_name} Of Filename {document_path}", f"Please ensure you are reading all this information checking your ppt.", f"{old_file_name}.md")
 
-        PPT2GPT(document_path, slides_to_skip, detailed_analysis, reviewer_name, simulate_calls_only, \
-                logger, content_out, llm_utils, selected_text_slide_requests, selected_artistic_slide_requests, \
-                selected_deck_requests, model_name, consider_bullets_for_crlf)
+        llm_access: AbstractLLMAccess = None
+        if detailed_analysis:
+            llm_access = LLMAccessDetailed(logger, reviewer_name, model_name) if not simulate_calls_only else LLMAccessDetailedSimulateCalls(logger, reviewer_name, model_name)
+        else:
+            llm_access = LLMAccess(logger, reviewer_name, model_name) if not simulate_calls_only else LLMAccessSimulateCalls(logger, reviewer_name, model_name)
+
+        PPT2GPT(document_path, slides_to_skip, logger, content_out, llm_utils, selected_text_slide_requests, \
+                selected_artistic_slide_requests, selected_deck_requests, llm_access, consider_bullets_for_crlf)
    
