@@ -1,6 +1,7 @@
 from domain.icontent_out import IContentOut
 from typing import List, Dict
 import re
+import pathlib  
 
 class ContentOut(IContentOut):
     
@@ -16,6 +17,8 @@ class ContentOut(IContentOut):
     
     def __init__(self, file_title: str, file_description: str, log_file_name: str):  
         self.log_file_name = log_file_name
+        self.temporary_file_name = f"{log_file_name}.temporary"
+        self.temporary_file = open(self.temporary_file_name, "a") 
         self.file_content: List = []
         self.file_title = f'# {file_title}'
         self.file_description = file_description
@@ -33,6 +36,8 @@ class ContentOut(IContentOut):
                 file.write(f'{toc}\n')
             for line in self.file_content:
                 file.write(f'\n{line}\n')
+        self.temporary_file.close()
+        pathlib.Path(self.temporary_file_name).unlink(missing_ok=True)
 
     def add_title(self, title_level: int, title_name: str):
         new_level:int = title_level + 1
@@ -49,6 +54,9 @@ class ContentOut(IContentOut):
 
     def __append_log(self, data: str):
         self.file_content.append(data)
+        self.temporary_file.write(f"{data}\n")
+        
+
 
     def document(self, line: str) -> None:
         self.__append_log('\n'.join([ re.sub(r'^#+', '#' * (self.last_title_level + 1), message) for message in line.split('\\n')]))
