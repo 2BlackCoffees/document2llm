@@ -84,10 +84,12 @@ class PPT2GPT:
             slide_number: int = slide_idx + 1
             if slide_number in self.slides_to_skip:
                 self.logger.info(f"Skipping slide number {slide_number} as per request.")
+                self.content_out.add_title(1, "Skipped slide number {slide_number} as per request")
                 continue
             # TODO: Does not work, will have to be fixed
             if slide.element.get('show', '1' == '0'):
                 self.logger.info(f'Skipping hidden slide number {slide_number}')
+                self.content_out.add_title(1, "Skipped hidden slide number {slide_number}")
                 continue
  
             self.logger.info(f"Analyzing slide number {slide_number}")
