@@ -30,14 +30,15 @@ class ApplicationService:
             logger.error(f'The file {document_path} does not seem to exist ({os.getcwd()}).')
             exit(1)
 
-        logger.info(f"Slides to be skipped are: {slides_to_skip}")
+        information_user: List = []
+        information_user.append(f"Slides to be skipped are: {slides_to_skip}")
         separator: str = " \n  * "
         if len(selected_text_slide_requests) > 0:
-            logger.info(f"LLM text Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_text_requests_and_ids_str(selected_text_slide_requests, separator)}")
+            information_user.append(f"LLM text Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_text_requests_and_ids_str(selected_text_slide_requests, separator)}")
         if len(selected_artistic_slide_requests) > 0:
-            logger.info(f"LLM artistic Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_artistic_requests_and_ids_str(selected_artistic_slide_requests, separator)}")
+            information_user.append(f"LLM artistic Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_artistic_requests_and_ids_str(selected_artistic_slide_requests, separator)}")
         if len(selected_deck_requests) > 0:
-            logger.info(f"LLM test Requests to be applied on the whole deck are:{separator}{llm_utils.get_all_deck_requests_and_ids_str(selected_deck_requests, separator)}")
+            information_user.append(f"LLM test Requests to be applied on the whole deck are:{separator}{llm_utils.get_all_deck_requests_and_ids_str(selected_deck_requests, separator)}")
 
         old_file_name: str = re.sub(r'\..*$', '', str(document_path))
         if detailed_analysis:
@@ -45,7 +46,11 @@ class ApplicationService:
 
         task_name: str = "Detailed Review" if detailed_analysis else "Review"
         content_out = ContentOut(f"{task_name} Of Filename {document_path}", f"Please ensure you are reading all this information checking your ppt.", f"{old_file_name}.md")
-
+        content_out.add_title(1, "Configuration")
+        for information in information_user:
+            logger.info(information)
+            content_out.document(information)
+            
         llm_access: AbstractLLMAccess = None
         if detailed_analysis:
             llm_access = LLMAccessDetailed(logger, reviewer_name, model_name) if not simulate_calls_only else LLMAccessDetailedSimulateCalls(logger, reviewer_name, model_name)
