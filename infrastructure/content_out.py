@@ -18,7 +18,7 @@ class ContentOut(IContentOut):
     def __init__(self, file_title: str, file_description: str, log_file_name: str):  
         self.log_file_name = log_file_name
         self.temporary_file_name = f"{log_file_name}.temporary"
-        self.temporary_file = open(self.temporary_file_name, "a") 
+        self.temporary_file = open(self.temporary_file_name, "a", encoding="utf-8") 
         self.file_content: List = []
         self.file_title = f'# {file_title}'
         self.file_description = file_description
