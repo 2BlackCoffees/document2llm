@@ -69,12 +69,16 @@ class PPT2GPT:
                 self.logger.debug(pformat(sorted_shapes))
             return slide_shapes_content, title, slide_info, reduced_slide_text
     
-    def __send_llm_requests_and_expand_output(self, content_to_check: List) -> None:
+    def __send_llm_requests_and_expand_output(self, content_to_check: List, print_title: bool) -> None:
 
             result = self.llm_access.check(content_to_check)
 
             for response in result:
-                self.content_out.add_title(2, response['request_name'])
+                if print_title: 
+                    self.content_out.add_title(2, response['request_name'])
+                else:
+                    self.content_out.document(f"**{response['request_name']}**")
+
                 self.content_out.document(response['response'])
             
     def __ppt2gpt(self):
@@ -84,12 +88,12 @@ class PPT2GPT:
             slide_number: int = slide_idx + 1
             if slide_number in self.slides_to_skip:
                 self.logger.info(f"Skipping slide number {slide_number} as per request.")
-                self.content_out.add_title(1, "Skipped slide number {slide_number} as per request")
+                self.content_out.add_title(1, f"Skipped slide number {slide_number} as per request")
                 continue
             # TODO: Does not work, will have to be fixed
             if slide.element.get('show', '1' == '0'):
                 self.logger.info(f'Skipping hidden slide number {slide_number}')
-                self.content_out.add_title(1, "Skipped hidden slide number {slide_number}")
+                self.content_out.add_title(1, f"Skipped hidden slide number {slide_number}")
                 continue
  
             self.logger.info(f"Analyzing slide number {slide_number}")
@@ -150,13 +154,13 @@ class PPT2GPT:
                 self.content_out.add_title(2, f"Check of text content for slide {slide_number}")
                 checker: IChecker = TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
                 self.llm_access.set_checker(checker)
-                self.__send_llm_requests_and_expand_output(slide_content["shapes"])
+                self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
 
             if len(self.selected_artistic_slide_requests) > 0:
                 self.content_out.add_title(2, f"Check of artistic content for slide {slide_number}")
                 checker: IChecker = ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
                 self.llm_access.set_checker(checker)
-                self.__send_llm_requests_and_expand_output(slide_content["shapes"])
+                self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
             deck_content.append(slide_content)
 
         if len(self.selected_deck_requests) > 0:
@@ -165,6 +169,6 @@ class PPT2GPT:
                                                   for slide_number, slide_content in enumerate(deck_content) ]
             checker: IChecker = DeckChecker(self.llm_utils, self.selected_deck_requests, f' (Deck)', f' (Deck)')
             self.llm_access.set_checker(checker)
-            self.__send_llm_requests_and_expand_output(formatted_deck_content_list)
+            self.__send_llm_requests_and_expand_output(formatted_deck_content_list, True)
 
         
