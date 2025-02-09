@@ -13,7 +13,7 @@ from domain.ppt_reader import PPTReader
 from domain.icontent_out import IContentOut
 
 class PPT2GPT: 
-    def __init__(self, document_path: str, slides_to_skip: List, \
+    def __init__(self, document_path: str, slides_to_skip: List, slides_to_keep: List,\
                  logger: Logger, content_out: IContentOut, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
                  selected_deck_requests: List, llm_access: AbstractLLMAccess, consider_bullets_for_crlf: bool= True):
@@ -24,11 +24,13 @@ class PPT2GPT:
         self.document_path = document_path
         self.crlf_replacement = " * " if consider_bullets_for_crlf else " "
         self.slides_to_skip = slides_to_skip
+        self.slides_to_keep = slides_to_keep
         self.selected_text_slide_requests = selected_text_slide_requests
         self.selected_artistic_slide_requests = selected_artistic_slide_requests
         self.selected_deck_requests = selected_deck_requests
         self.llm_access = llm_access
-
+        self.want_selected_text_slide_requests: bool = len(self.selected_text_slide_requests) > 0
+        self.want_selected_artistic_slide_requests: bool = len(self.selected_artistic_slide_requests) > 0
         try:
             self.__ppt2gpt()
         except Exception as err:                    
@@ -80,20 +82,25 @@ class PPT2GPT:
                     self.content_out.document(f"**{response['request_name']}**")
 
                 self.content_out.document(response['response'])
-            
+    def __print_skip_info(self, skip_info: str) -> None:
+        self.logger.info(skip_info)
+        if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
+            self.content_out.add_title(1, skip_info)
+        else:
+            self.content_out.document(f"**{skip_info}**")
+
     def __ppt2gpt(self):
+
         deck_content: List = []
         for slide_idx, slide in enumerate(self.document.slides):
 
             slide_number: int = slide_idx + 1
-            if slide_number in self.slides_to_skip:
-                self.logger.info(f"Skipping slide number {slide_number} as per request.")
-                self.content_out.add_title(1, f"Skipped slide number {slide_number} as per request")
+            if slide_number in self.slides_to_skip or (self.slides_to_keep is not None and len(self.slides_to_keep) > 0 and slide_number not in self.slides_to_keep):
+                self.__print_skip_info(f"Skipped slide number {slide_number} as per request.")
                 continue
-            # TODO: Does not work, will have to be fixed
+
             if slide.element.get('show', '1' == '0'):
-                self.logger.info(f'Skipping hidden slide number {slide_number}')
-                self.content_out.add_title(1, f"Skipped hidden slide number {slide_number}")
+                self.__print_skip_info(f"Skipped hidden slide number {slide_number}.")
                 continue
  
             self.logger.info(f"Analyzing slide number {slide_number}")
@@ -147,20 +154,22 @@ class PPT2GPT:
                 "shapes": slide_shapes_content,
                 "reduced_slide_text": reduced_slide_text
             }
-            #title = re.sub(r'[^\w\d]', ' ', title)
-            self.content_out.add_title(1, f"Analyzing slide {slide_number} {title}")
 
-            if len(self.selected_text_slide_requests) > 0:
-                self.content_out.add_title(2, f"Check of text content for slide {slide_number}")
-                checker: IChecker = TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
-                self.llm_access.set_checker(checker)
-                self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+            if self.want_selected_text_slide_requests and self.want_selected_artistic_slide_requests:
+                self.content_out.add_title(1, f"Analyzing slide {slide_number} {title}")
 
-            if len(self.selected_artistic_slide_requests) > 0:
-                self.content_out.add_title(2, f"Check of artistic content for slide {slide_number}")
-                checker: IChecker = ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
-                self.llm_access.set_checker(checker)
-                self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+                if self.want_selected_text_slide_requests:
+                    self.content_out.add_title(2, f"Check of text content for slide {slide_number}")
+                    checker: IChecker = TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
+                    self.llm_access.set_checker(checker)
+                    self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+
+                if self.want_selected_artistic_slide_requests:
+                    self.content_out.add_title(2, f"Check of artistic content for slide {slide_number}")
+                    checker: IChecker = ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
+                    self.llm_access.set_checker(checker)
+                    self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+                    
             deck_content.append(slide_content)
 
         if len(self.selected_deck_requests) > 0:

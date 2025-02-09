@@ -15,7 +15,7 @@ from infrastructure.content_out import ContentOut
 from domain.ppt2gpt import PPT2GPT
 
 class ApplicationService:
-    def __init__(self, document_path: str, slides_to_skip: List, detailed_analysis: bool, reviewer_name: str, \
+    def __init__(self, document_path: str, slides_to_skip: List, slides_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
                  simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
                  selected_deck_requests: List, model_name: str, consider_bullets_for_crlf: bool= True):
@@ -31,7 +31,10 @@ class ApplicationService:
             exit(1)
 
         information_user: List = []
-        information_user.append(f"Slides to be skipped are: {slides_to_skip}")
+        if slides_to_skip is not None and len(slides_to_skip) > 0:
+            information_user.append(f"Slides to be skipped are: {slides_to_skip}")
+        if slides_to_keep is not None and len(slides_to_keep) > 0:
+            information_user.append(f"Slides to be kept are: {slides_to_keep}")
         separator: str = " \n  * "
         if len(selected_text_slide_requests) > 0:
             information_user.append(f"LLM text Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_text_requests_and_ids_str(selected_text_slide_requests, separator)}")
@@ -57,6 +60,6 @@ class ApplicationService:
         else:
             llm_access = LLMAccess(logger, reviewer_name, model_name) if not simulate_calls_only else LLMAccessSimulateCalls(logger, reviewer_name, model_name)
 
-        PPT2GPT(document_path, slides_to_skip, logger, content_out, llm_utils, selected_text_slide_requests, \
+        PPT2GPT(document_path, slides_to_skip, slides_to_keep, logger, content_out, llm_utils, selected_text_slide_requests, \
                 selected_artistic_slide_requests, selected_deck_requests, llm_access, consider_bullets_for_crlf)
    
