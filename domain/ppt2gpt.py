@@ -82,12 +82,12 @@ class PPT2GPT:
                     self.content_out.document(f"**{response['request_name']}**")
 
                 self.content_out.document(response['response'])
-    def __print_skip_info(self, skip_info: str) -> None:
-        self.logger.info(skip_info)
+    def __print_slide_keep_skip_info(self, keep_skip_info: str) -> None:
+        self.logger.info(keep_skip_info)
         if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
-            self.content_out.add_title(1, skip_info)
+            self.content_out.add_title(1, keep_skip_info)
         else:
-            self.content_out.document(f"**{skip_info}**")
+            self.content_out.document(f"**{keep_skip_info}**")
 
     def __ppt2gpt(self):
 
@@ -95,12 +95,19 @@ class PPT2GPT:
         for slide_idx, slide in enumerate(self.document.slides):
 
             slide_number: int = slide_idx + 1
-            if slide_number in self.slides_to_skip or (self.slides_to_keep is not None and len(self.slides_to_keep) > 0 and slide_number not in self.slides_to_keep):
-                self.__print_skip_info(f"Skipped slide number {slide_number} as per request.")
+            if slide_number in self.slides_to_skip:
+                self.__print_slide_keep_skip_info(f"Skipped slide number {slide_number} as per request.")
                 continue
 
+            if self.slides_to_keep is not None and len(self.slides_to_keep) > 0:
+                if slide_number not in self.slides_to_keep:
+                    continue
+                else:
+                    self.__print_slide_keep_skip_info(f"Keep slide number {slide_number} as per request.")
+                
+
             if slide.element.get('show', '1' == '0'):
-                self.__print_skip_info(f"Skipped hidden slide number {slide_number}.")
+                self.__print_slide_keep_skip_info(f"Skipped hidden slide number {slide_number}.")
                 continue
  
             self.logger.info(f"Analyzing slide number {slide_number}")
