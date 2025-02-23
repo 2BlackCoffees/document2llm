@@ -72,7 +72,7 @@ class PPT2GPT:
             return slide_shapes_content, title, slide_info, reduced_slide_text
     
     def __send_llm_requests_and_expand_output(self, content_to_check: List, print_title: bool) -> None:
-
+            
             result = self.llm_access.check(content_to_check)
 
             for response in result:
@@ -80,8 +80,8 @@ class PPT2GPT:
                     self.content_out.add_title(2, response['request_name'])
                 else:
                     self.content_out.document(f"**{response['request_name']}**")
-
                 self.content_out.document(response['response'])
+
     def __print_slide_keep_skip_info(self, keep_skip_info: str) -> None:
         self.logger.info(keep_skip_info)
         if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
@@ -162,7 +162,7 @@ class PPT2GPT:
                 "reduced_slide_text": reduced_slide_text
             }
 
-            if self.want_selected_text_slide_requests and self.want_selected_artistic_slide_requests:
+            if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
                 self.content_out.add_title(1, f"Analyzing slide {slide_number} {title}")
 
                 if self.want_selected_text_slide_requests:

@@ -63,8 +63,6 @@ class PPTReader:
 
             if hasattr(shape.line, "width"):
                 line_style["line_width_points"] = shape.line.width.pt
-            if hasattr(shape.line, "dash_style"):
-               line_style["is_dash_style"] = "Yes" if shape.line.dash_style is not None else "No"
             shape_details["shape"]["line"] = line_style
 
         if hasattr(shape, 'text_frame'):
