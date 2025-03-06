@@ -1,12 +1,12 @@
 
-# PPT Review using LLM: A Configurable Python Program
+# PPT Review using LLM: An Extensible Python Program
 
 This Python script utilizes a Large Language Model (LLM) to review and provide feedback on PowerPoint presentations (PPT). The program analyzes the content, structure, and overall quality of the presentation, offering a comprehensive review.
 
 
 ## Table of Contents
 
-- [PPT Review using LLM: A Configurable Python Program](#ppt-review-using-llm-a-configurable-python-program)
+- [PPT Review using LLM: An Extensible Python Program](#ppt-review-using-llm-an-extensible-python-program)
   - [Table of Contents](#table-of-contents)
   - [Important Security Consideration](#important-security-consideration)
   - [Review Approaches](#review-approaches)
@@ -41,7 +41,9 @@ The script is designed to be extensible, allowing users to create new custom req
 [
     {
         "request_name": "My request name",
-        "request": "Detail your request here."
+        "request": "Detail your request here.",
+        "temperature": 0.3, 
+        "top_p": 0.7 
     }
 ]
 ```
@@ -74,19 +76,40 @@ To run the program, use the following command:
 
 The program accepts the following options:
 
-* `--from_document <document>`: Specify the document to open
-* `--model_name <model_name>`: Specify the name of the LLM model to use (default: `llama3-70b`)
-* `--skip_slides <slides>`: Specify slides to skip (e.g., `1,2-5,8`)
-* `--text_slide_requests <requests>`: Specify slide requests to process (default: `[0, 1, 2, 3, 4, 5, 6]`)
-* `--no_text_slide_requests`: Skip text slide by slide check
-* `--artistic_slide_requests <requests>`: Specify slide requests to process (default: `[0, 1, 2, 3]`)
-* `--no_artistic_slide_requests`: Skip artistic slide by slide check
-* `--deck_requests <requests>`: Specify deck requests to process (default: `[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]`)
-* `--no_deck_requests`: Skip deck check
-* `--detailed_analysis`: Select a detailed analysis or high-level one
-* `--reviewer_name <reviewer_name>`: Specify a reviewer name (default: `Elon Musk`)
-* `--debug`: Set logging to debug
-* `--simulate_calls_only`: Do not perform the calls to LLM (used for debugging purpose)
+*  `--from_document` FROM_DOCUMENT
+                        Specify the document to open
+*  `--model_name` MODEL_NAME
+                        Specify the name of the LLM model to use. Default is llama3-70b
+*  `--skip_slides` SKIP_SLIDES
+                        Specify slides to skip: 1,2-5,8: Cannot be used with only_slides
+*  `--only_slides` ONLY_SLIDES
+                        Specify slides to keep: 1,2-5,8: Cannot be used with skip_slides
+*  `--text_slide_requests` TEXT_SLIDE_REQUESTS
+                        Specify slide requests to process: 1,3-5,7 from the following list: [[ 0: Spell check and Clarity checks *** 1: Slide Redability checks *** 2: Slide take away checks *** 3: Experts
+                        feedback checks *** 4: Slide memorability check *** 5: Slide audience check *** 6: Slide weakness and counter points checks ]], default is [0, 1, 2, 3, 4, 5, 6]
+*  `--no_text_slide_requests`
+                        Skip text slide by slide check
+*  `--artistic_slide_requests` ARTISTIC_SLIDE_REQUESTS
+                        Specify slide requests to process: 1,3-5,7 from the following list: [[ 0: Artistic review *** 1: Experts feedback checks *** 2: Slide audience check *** 3: Slide weakness and counter
+                        points checks ]], default is [0, 1, 2, 3]
+*  `--no_artistic_slide_requests`
+                        Skip artistic slide by slide check
+*  `--deck_requests` DECK_REQUESTS
+                        Specify deck requests to process: 1,3-5,7 from the following list: [[ 0: Flow check *** 1: Consistency check *** 2: Clarity checks *** 3: Deck Redability checks *** 4: Deck take away
+                        checks *** 5: Experts feedback checks *** 6: Deck memorability check *** 7: Deck audience check *** 8: Deck weakness and counter points checks *** 9: Summarize the deck ]], default is
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+*  `--no_deck_requests`    Skip deck check
+*  `--detailed_analysis`   Select a detailed analysis or high level one
+*  `--reviewer_name` REVIEWER_NAME
+                        Specify a reviewer name (Default is Elon Musk): Consider for example Jeff Bezos for management review.
+*  `--debug`               Set logging to debug
+*  `--force_top_p` FORCE_TOP_P
+                        Increases diversity from various probable outputs in results.
+*  `--force_temperature` FORCE_TEMPERATURE
+                        Higher temperature increases non sense and creativity while lower yields to focused and predictable results.
+*  `--simulate_calls_only`
+                        Do not perform the calls to LLM: used for debugging purpose.
+
 
 ## Default analysis
 
