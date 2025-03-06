@@ -37,18 +37,28 @@ class LLMAccess(AbstractLLMAccess):
     def _create_messages(self, request_inputs: List, content: str):
         llm_requests: List = []
         request_names: List = []
+        avg_temperature: float = 0
+        avg_top_p: float = 0
         if len(request_inputs) > 0:
             # Prepare request and add content of slide
             llm_requests, request_name = self._create_message(request_inputs[0]['reviewer'], content, request_inputs[0]["request_name"])
             request_names.append(request_name)
             for request_input in request_inputs:
-                llm_requests.append({"role": "user", "content": self._get_request_llm_to_string(request_input)})
+                llm_requests.append({
+                                     "role": "user", \
+                                     "content": self._get_request_llm_to_string(request_input)
+                                     }
+                                    )
                 request_names.append(request_input["request_name"])
+                avg_temperature += request_input['temperature'] if request_input['temperature'] is not None else 0
+                avg_top_p += request_input['top_p'] if request_input['top_p'] is not None else 0
 
-        return llm_requests, request_names
+            avg_temperature /= len(request_inputs)
+            avg_top_p /= len(request_inputs)
+        return llm_requests, request_names, avg_temperature, avg_top_p
 
 # Checkout: https://stackoverflow.com/questions/78084538/openai-assistants-api-how-do-i-upload-a-file-and-use-it-as-a-knowledge-base
-    def _send_request_plain(self, messages: List, request_name: str) -> str: 
+    def _send_request_plain(self, messages: List, request_name: str, temperature: float, top_p: float) -> str: 
         #pprint(self.slide_content)
         #pprint(request)
         return_message: str = None
@@ -56,24 +66,29 @@ class LLMAccess(AbstractLLMAccess):
         self.logger.info(f'Requesting {request_name}')
         review = self.client.chat.completions.create(
             model=self.model_name,
-            messages=messages
+            messages=messages,
+            temperature=temperature,
+            top_p=top_p
         )
 
         return_message = re.sub(r'\'\s+.*refusal=.*,.*role=.*\)', '', re.sub(r'ChatCompletionMessage\(content=', '', str(review.choices[0].message.content.strip())))
 
         return {
             'request_name': request_name,
-            'response': return_message #"\n".join([ re.sub(r'^#', '####', message) for message in return_message.split('\\n')])
+            'response': return_message,
+            'temperature': temperature,
+            'top_p': top_p
+
         }
 
-    def _send_request(self, messages: List, error_information: str, request_name: str) -> str:
+    def _send_request(self, messages: List, error_information: str, request_name: str, temperature: float, top_p: float) -> str:
         openai_response: bool = False
         sleep_time: int = 10
         response: Dict = {}
 
         while not openai_response:
             try:
-                response = self._send_request_plain(messages, request_name)
+                response = self._send_request_plain(messages, request_name, temperature, top_p)
                 openai_response = True
             except Exception as err:                    
                 self.logger.warning(f"{error_information}: {request_name}: Caught exception {err=}, {type(err)=}\nMessage: {pformat(messages)}")
@@ -92,10 +107,11 @@ class LLMAccess(AbstractLLMAccess):
         slide_contents_str: str = request_inputs[0]['slide_contents_str'] if len(request_inputs) > 0 else None
         error_information: str = request_inputs[0]['error_information'] if len(request_inputs) > 0 else None
 
-        llm_requests, request_names = self._create_messages(request_inputs, slide_contents_str)
+        llm_requests, request_names, avg_temperature, avg_top_p = self._create_messages(request_inputs, slide_contents_str)
         return_value.append(self._send_request(llm_requests, \
                                                 error_information, \
-                                                " & ".join(request_names)))
+                                                " & ".join(request_names)),
+                                                avg_temperature, avg_top_p)
         return return_value
     
 

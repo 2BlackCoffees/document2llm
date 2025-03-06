@@ -41,6 +41,8 @@ parser.add_argument('--no_deck_requests',action="store_true", help=f'Skip deck c
 parser.add_argument('--detailed_analysis', action="store_true", help='Select a detailed analysis or high level one')
 parser.add_argument('--reviewer_name', type=int, help=f'Specify a reviewer name (Default is {reviewer_name}): Consider for example Jeff Bezos for management review.')
 parser.add_argument('--debug', action="store_true", help='Set logging to debug')
+parser.add_argument('--force_top_p',type=float, help=f'Increases diversity from various probable outputs in results.')  # Add argument to increase diversity from various probable outputs in results
+parser.add_argument('--force_temperature', type=float, help=f'Higher temperature increases non sense and creativity while lower yields to focused and predictable results.')  # Add argument to increase non sense and creativity while lower yields to focused and predictable results
 parser.add_argument('--simulate_calls_only', action="store_true", help=f'Do not perform the calls to LLM: used for debugging purpose.')
 args = parser.parse_args()
 
@@ -64,6 +66,10 @@ if args.from_document:
     from_document = args.from_document
 if args.model_name:
     model_name = args.model_name
+if args.force_temperature:
+    llm_utils.set_default_temperature(args.force_temperature)
+if args.force_top_p:
+    llm_utils.set_default_top_p(args.force_top_p)
 
 if args.reviewer_name:
     reviewer_name = args.reviewer_name
@@ -79,5 +85,7 @@ slides_to_keep: List = []
 if args.only_slides:
     slides_to_keep = llm_utils.get_list_parameters(args.only_slides)
 
-ApplicationService(from_document, slides_to_skip, slides_to_keep, args.detailed_analysis, reviewer_name, args.simulate_calls_only, logging_level,\
-                   llm_utils, selected_text_slide_requests, selected_artistic_slide_requests, selected_deck_requests, model_name)
+ApplicationService(from_document, slides_to_skip, slides_to_keep, args.detailed_analysis, \
+                   reviewer_name, args.simulate_calls_only, logging_level, llm_utils, \
+                   selected_text_slide_requests, selected_artistic_slide_requests, \
+                   selected_deck_requests, model_name)

@@ -13,74 +13,140 @@ class LLMUtils:
         self.slide_artistic_content_review_llm_requests = [
             {'request_name': 'Artistic review', 
                 'request': f"Consider how the various colors, shapes and size of fonts provide would need some improvement to provide a more harmonious slide."\
-                f"Please consider that {' '.join(color_palette)} are our main colors."},
+                           f"Please consider that {' '.join(color_palette)} are our main colors.",
+                'temperature': 0.4, 'top_p': 0.4 
+            },
             {'request_name': 'Experts feedback checks', 
                 'request': "Consider what the reviewer might say for the slide if they read it."\
-                "Please provide concrete and valuable suggest improvements."},
+                           "Please provide concrete and valuable suggest improvements.",
+                'temperature': 0.4, 'top_p': 0.4 
+            },
             {'request_name': 'Slide audience check',
                 'request': "Observe the slide from the perspective of a sceptic, supporter, and unfamiliar reader."\
-                "Please concrete and valuable suggest improvements."},
+                           "Please concrete and valuable suggest improvements.",
+                'temperature': 0.7, 'top_p': 0.6 
+            },
             {'request_name': 'Slide weakness and counter points checks',
                 'request': "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness, colors, ...)."\
-                "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
-                "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the overall slide?"}
+                           "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
+                           "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the overall slide?",
+                'temperature': 0.8, 'top_p': 0.7 
+            }
         ]
         self.slide_artistic_content_review_llm_requests.extend(slide_artistic_external_requests)
 
         self.slide_text_review_llm_requests = [
             {'request_name': 'Spell check and Clarity checks', 
                 'request': 'Perform a detailed spell check to ensure no spelling errors exist. '\
-                'Verify that all terms used are clear and concise for any reader.'\
-                'Identify any sections or slides that may be confusing or unclear.'},
+                           'Verify that all terms used are clear and concise for any reader.'\
+                           'Identify any sections or slides that may be confusing or unclear.',
+                'temperature': 0.3, 'top_p': 0.2 
+            },
             {'request_name': 'Slide Redability checks',
-                'request': "Read the slide out loud and suggest simplification if the text is hard to read or comprehend."},
+                'request': "Read the slide out loud and suggest simplification if the text is hard to read or comprehend.",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
             {'request_name': 'Slide take away checks', 
                 'request': "Ensure the whole slide text has a clear, memorable takeaway."\
-                "Please provide concrete and valuable suggestion improvements."\
-                "If takeaway is missing, provide a suggested takeaway for each slide"},
+                           "Please provide concrete and valuable suggestion improvements."\
+                           "If takeaway is missing, provide a suggested takeaway for each slide",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
             {'request_name': 'Experts feedback checks', 
                 'request': "Consider what the reviewer might say for the slide if they read it."\
-                "Please provide concrete and valuable suggest improvements."},
+                           "Please provide concrete and valuable suggest improvements.",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
             {'request_name': 'Slide memorability check', 
                 'request': "Summarize the main point of the slide in less than two sentences and provide the sentences, make sure they are memorable.Please concrete and valuable suggest improvements."\
-                "Review the title and opening paragraph of each slide. Suggest improvements if they don't grab your attention."},
+                           "Review the title and opening paragraph of each slide. Suggest improvements if they don't grab your attention.",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
             {'request_name': 'Slide audience check',
                 'request': "Read the slide from the perspective of a sceptic, supporter, and unfamiliar reader."\
-                "Please concrete and valuable suggest improvements."},
+                           "Please concrete and valuable suggest improvements.",
+                'temperature': 0.6, 'top_p': 0.6 
+            },
             {'request_name': 'Slide weakness and counter points checks',
                 'request': "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness)."\
-                "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
-                "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?"}
+                           "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
+                           "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
+                'temperature': 0.6, 'top_p': 0.6 
+            }
         ]
         self.slide_text_review_llm_requests.extend(slide_text_external_requests)
 
         self.deck_review_llm_requests = [
             {'request_name': 'Flow check', 
-                'request': "Please review the whole flow considering all slides. Please suggest reordering of slides if some slides are not in the right order."},
+                'request': "Please review the whole flow considering all slides. Please suggest reordering of slides if some slides are not in the right order.",
+                'temperature': 0.3, 'top_p': 0.4 
+            },
             {'request_name': 'Consistency check', 
-                'request': "Please review the whole flow considering all slides. Please suggest missing slides if some slides are missing. Please provide concreate and detailed examples of the missing slides."},
+                'request': "Please review the whole flow considering all slides. Please suggest missing slides if some slides are missing. Please provide concreate and detailed examples of the missing slides.",
+                'temperature': 0.3, 'top_p': 0.4 
+            },
             {'request_name': 'Clarity checks', 
-                'request': 'Identify any sections or slides that may be confusing or unclear.'},
+                'request': 'Identify any sections or slides that may be confusing or unclear.',
+                'temperature': 0.3, 'top_p': 0.4 
+            },
             {'request_name': 'Deck Redability checks',
-                'request': "Read all the slides out loud and suggest simplification if the text or flow is hard to read or comprehend."},
+                'request': "Read all the slides out loud and suggest simplification if the text or flow is hard to read or comprehend.",
+                'temperature': 0.4, 'top_p': 0.4 
+            },
             {'request_name': 'Deck take away checks', 
                 'request': "Ensure the whole deck text has a clear, memorable takeaway."\
-                "Please provide concrete and valuable suggestion improvements ensuring that the reader has a good understanding of the message conveyed by the dec."},
+                           "Please provide concrete and valuable suggestion improvements ensuring that the reader has a good understanding of the message conveyed by the dec.",
+                'temperature': 0.4, 'top_p': 0.4 
+            },
             {'request_name': 'Experts feedback checks', 
                 'request': "Consider what the reviewer might say for the deck if they read it."\
-                "Please provide concrete and valuable suggest improvements."},
+                           "Please provide concrete and valuable suggest improvements.",
+                'temperature': 0.4, 'top_p': 0.4 
+            },
             {'request_name': 'Deck memorability check', 
                 'request': "Summarize the main point of the deck in less than 10 sentences and provide the sentences, make sure the sentences are memorable."\
-                "Review the title and opening paragraph of each slide. Suggest improvements if they don't grab your attention or the flow is not optimal."},
+                           "Review the title and opening paragraph of each slide. Suggest improvements if they don't grab your attention or the flow is not optimal.",
+                'temperature': 0.4, 'top_p': 0.4 
+            },
             {'request_name': 'Deck audience check',
                 'request': "Read the deck from the perspective of a sceptic, supporter, and unfamiliar reader."\
-                "Please concrete and valuable suggest improvements."},
+                           "Please concrete and valuable suggest improvements.",
+                'temperature': 0.5, 'top_p': 0.6 
+            },
             {'request_name': 'Deck weakness and counter points checks',
                 'request': "Identify the weakest parts of the deck (e.g., logic, structure, distinctiveness)."\
-                "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
-                "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the deck?"}
+                           "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
+                           "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the deck?",
+                'temperature': 0.5, 'top_p': 0.6 
+            }
         ]
         self.deck_review_llm_requests.extend(deck_text_external_requests)
+    
+    def set_default_temperature_top_p_requests(self, list_requests: List, new_temperature: float, new_top_p: float) -> None:
+        for request in list_requests:
+            if new_temperature is not None:
+                request['temperature'] = new_temperature
+            if new_top_p is not None:
+                request['top_p'] = new_top_p
+
+
+    def set_default_temperature(self, new_temperature: float) -> None:
+        """
+        @brief Sets the temperature for all LLM requests.
+        @param new_temperature The new temperature value.
+        """
+        self.set_default_temperature_top_p_requests(self.slide_artistic_content_review_llm_requests, new_temperature, None)
+        self.set_default_temperature_top_p_requests(self.slide_text_review_llm_requests, new_temperature, None)
+        self.set_default_temperature_top_p_requests(self.deck_review_llm_requests, new_temperature, None)
+        
+    def set_default_top_p(self, new_top_p: float) -> None:
+        """
+        @brief Sets the top_p value for all LLM requests.
+        @param new_top_p The new top_p value.
+        """
+        self.set_default_temperature_top_p_requests(self.slide_artistic_content_review_llm_requests, None, new_top_p)
+        self.set_default_temperature_top_p_requests(self.slide_text_review_llm_requests, None, new_top_p)
+        self.set_default_temperature_top_p_requests(self.deck_review_llm_requests, None, new_top_p)
 
     def __read_json(self, filename: str):
         path = Path(filename)

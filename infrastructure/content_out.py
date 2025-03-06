@@ -5,14 +5,6 @@ import pathlib
 
 class ContentOut(IContentOut):
     
-    # # Table of Contents
-    # 1. [Example](#example)
-    # 2. [Example2](#example2)
-    # 3. [Third Example](#third-example)
-
-    # ## Example [](#){name=example}
-    # ## Example2 [](#){name=example2}
-    # ## [Third Example](#){name=third-example}
     toc: List = []
     
     def __init__(self, file_title: str, file_description: str, log_file_name: str):  

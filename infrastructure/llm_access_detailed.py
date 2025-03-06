@@ -7,8 +7,15 @@ from infrastructure.llm_access import LLMAccess
 class LLMAccessDetailed(LLMAccess):
     def __send_request_thread(self, request_input: Dict) -> str:
         llm_requests, request_name = self._create_message(request_input['reviewer'], request_input['slide_contents_str'], request_input["request_name"]) 
-        llm_requests.append({"role": "user", "content": self._get_request_llm_to_string(request_input)})
-        return self._send_request(llm_requests, request_input['error_information'], request_name)
+        llm_requests.append({
+                              "role": "user", 
+                              "content": self._get_request_llm_to_string(request_input)
+                            })
+        return self._send_request(llm_requests, \
+                                  request_input['error_information'], \
+                                  request_name,\
+                                  request_input['temperature'],
+                                  request_input['top_p'])
     
     def _prepare_and_send_requests( self, request_inputs: List):
         return_value: List = []

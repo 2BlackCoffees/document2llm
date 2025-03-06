@@ -11,6 +11,7 @@ from domain.allm_access import AbstractLLMAccess
 from domain.llm_utils import LLMUtils
 from domain.ppt_reader import PPTReader
 from domain.icontent_out import IContentOut
+from pprint import pprint
 
 class PPT2GPT: 
     def __init__(self, document_path: str, slides_to_skip: List, slides_to_keep: List,\
@@ -77,7 +78,7 @@ class PPT2GPT:
 
             for response in result:
                 if print_title: 
-                    self.content_out.add_title(2, response['request_name'])
+                    self.content_out.add_title(2, f"{response['request_name']} (temperature: {response['temperature']}, top_p: {response['top_p']})")
                 else:
                     self.content_out.document(f"**{response['request_name']}**")
                 self.content_out.document(response['response'])

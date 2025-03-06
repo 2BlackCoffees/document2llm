@@ -22,7 +22,7 @@ class AbstractLLMAccess(ABC):
         """
         """
     @abstractmethod
-    def _send_request_plain(self, messages: List, request_name: str) -> str: 
+    def _send_request_plain(self, messages: List, request_name: str, temperature: float, top_p: float) -> str: 
         """
         """
 
@@ -37,6 +37,8 @@ class AbstractLLMAccess(ABC):
             'reviewer': self.reviewer,
             'request_name': request['request_name'],
             'request_llm': request['request'],
+            'temperature': request['temperature'] if 'temperature' in request else 0.1,
+            'top_p': request['top_p'] if 'top_p' in request else 0.1,
             # Following two are necessary for multi threading
             'error_information': error_information,
             'slide_contents_str': slide_contents_str
