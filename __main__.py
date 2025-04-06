@@ -4,8 +4,6 @@ import sys
 import logging
 from functools import partial
 from typing import List, Dict
-from infrastructure.content_out import ContentOut
-#from domain.ppt2gpt import PPT2GPT
 from service.application_service import ApplicationService
 from domain.llm_utils import LLMUtils
 
@@ -16,6 +14,7 @@ csv_ = partial(str.split, sep=',')
 reviewer_name: str = "Elon Musk"
 from_document: str = ""
 model_name: str = "llama3-70b"
+to_document: str = None
 
 
 
@@ -29,6 +28,7 @@ selected_deck_requests: List = [ idx for idx in range(len(llm_utils.get_all_deck
 only_slides = None
 
 parser.add_argument('--from_document', type=str, help='Specify the document to open')
+parser.add_argument('--to_document', type=str, help='Specify the review document to create')
 parser.add_argument('--model_name', type=str, help=f'Specify the name of the LLM model to use. Default is {model_name}')
 parser.add_argument('--skip_slides', type=csv_, help='Specify slides to skip: 1,2-5,8: Cannot be used with only_slides')
 parser.add_argument('--only_slides', type=csv_, help='Specify slides to keep: 1,2-5,8: Cannot be used with skip_slides')
@@ -70,6 +70,8 @@ if args.force_temperature:
     llm_utils.set_default_temperature(args.force_temperature)
 if args.force_top_p:
     llm_utils.set_default_top_p(args.force_top_p)
+if args.to_document:
+    to_document = args.to_document
 
 if args.reviewer_name:
     reviewer_name = args.reviewer_name
@@ -85,7 +87,7 @@ slides_to_keep: List = []
 if args.only_slides:
     slides_to_keep = llm_utils.get_list_parameters(args.only_slides)
 
-ApplicationService(from_document, slides_to_skip, slides_to_keep, args.detailed_analysis, \
+ApplicationService(from_document, to_document, slides_to_skip, slides_to_keep, args.detailed_analysis, \
                    reviewer_name, args.simulate_calls_only, logging_level, llm_utils, \
                    selected_text_slide_requests, selected_artistic_slide_requests, \
                    selected_deck_requests, model_name)
