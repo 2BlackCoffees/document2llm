@@ -15,7 +15,7 @@ from infrastructure.content_out import ContentOut
 from domain.ppt2gpt import PPT2GPT
 
 class ApplicationService:
-    def __init__(self, document_path: str, slides_to_skip: List, slides_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
+    def __init__(self, document_path: str, to_document: str, slides_to_skip: List, slides_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
                  simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
                  selected_deck_requests: List, model_name: str, consider_bullets_for_crlf: bool= True):
@@ -43,12 +43,15 @@ class ApplicationService:
         if len(selected_deck_requests) > 0:
             information_user.append(f"LLM test Requests to be applied on the whole deck are:{separator}{llm_utils.get_all_deck_requests_and_ids_str(selected_deck_requests, separator)}")
 
-        old_file_name: str = re.sub(r'\..*$', '', str(document_path))
-        if detailed_analysis:
-            old_file_name += "-detailed"
-
+        if to_document is None:
+            to_document = re.sub(r'\.[^\.]*$', '', str(document_path))
+            if detailed_analysis:
+                to_document += "-detailed"
+            to_document += '.md'
+        
+        logging.info(f"Creating review document {to_document} from {document_path}.")
         task_name: str = "Detailed Review" if detailed_analysis else "Review"
-        content_out = ContentOut(f"{task_name} Of Filename {document_path}", f"Please ensure you are reading all this information checking your ppt.", f"{old_file_name}.md")
+        content_out = ContentOut(f"{task_name} Of Filename {document_path}", f"Please ensure you are reading all this information checking your ppt.", f"{to_document}")
         content_out.add_title(1, "Configuration")
         for information in information_user:
             logger.info(information)
