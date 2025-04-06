@@ -110,8 +110,8 @@ class LLMAccess(AbstractLLMAccess):
         llm_requests, request_names, avg_temperature, avg_top_p = self._create_messages(request_inputs, slide_contents_str)
         return_value.append(self._send_request(llm_requests, \
                                                 error_information, \
-                                                " & ".join(request_names)),
-                                                avg_temperature, avg_top_p)
+                                                " & ".join(request_names),
+                                                avg_temperature, avg_top_p))
         return return_value
     
 
