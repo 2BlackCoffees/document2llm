@@ -11,26 +11,23 @@ class LLMUtils:
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
         deck_text_external_requests : List = self.__read_json(slide_deck_filename)
         self.slide_artistic_content_review_llm_requests = [
-            {'request_name': 'Artistic review', 
-                'request': f"Consider how the various colors, shapes and size of fonts provide would need some improvement to provide a more harmonious slide."\
+            {'request_name': 'Color artistic review', 
+                'request': f"Consider how the various colors need some improvement to provide a more harmonious slide."\
                            f"Please consider that {' '.join(color_palette)} are our main colors.",
                 'temperature': 0.4, 'top_p': 0.4 
             },
-            {'request_name': 'Experts feedback checks', 
-                'request': "Consider what the reviewer might say for the slide if they read it."\
-                           "Please provide concrete and valuable suggest improvements.",
+            {'request_name': 'Size, position and shapes artistic review', 
+                'request': f"Consider how the various size, position and type of the shapes need some improvement to provide a more harmonious slide.",
                 'temperature': 0.4, 'top_p': 0.4 
             },
-            {'request_name': 'Slide audience check',
-                'request': "Observe the slide from the perspective of a sceptic, supporter, and unfamiliar reader."\
-                           "Please concrete and valuable suggest improvements.",
-                'temperature': 0.7, 'top_p': 0.6 
+            {'request_name': 'Fonts and size artistic review', 
+                'request': f"Consider how the various fonts, font color and the size of the text need some improvement to provide a more harmonious slide.",
+                'temperature': 0.4, 'top_p': 0.4 
             },
-            {'request_name': 'Slide weakness and counter points checks',
-                'request': "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness, colors, ...)."\
-                           "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
-                           "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the overall slide?",
-                'temperature': 0.8, 'top_p': 0.7 
+            {'request_name': 'Global artistic check',
+                'request': f"Consider how the various colour, size, position and type of the shapes together with the various fonts, font color and the size of the text need some improvement to provide a more harmonious slide. "\
+                           f"Please consider that {' '.join(color_palette)} are our main colors.",
+                'temperature': 0.7, 'top_p': 0.6 
             }
         ]
         self.slide_artistic_content_review_llm_requests.extend(slide_artistic_external_requests)
@@ -39,7 +36,7 @@ class LLMUtils:
             {'request_name': 'Spell check and Clarity checks', 
                 'request': 'Perform a detailed spell check to ensure no spelling errors exist. '\
                            'Verify that all terms used are clear and concise for any reader.'\
-                           'Identify any sections or slides that may be confusing or unclear.',
+                           'Identify any sections or slides that may be confusing or unclear, suggest improvements.',
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Slide Redability checks',
@@ -49,7 +46,7 @@ class LLMUtils:
             {'request_name': 'Slide take away checks', 
                 'request': "Ensure the whole slide text has a clear, memorable takeaway."\
                            "Please provide concrete and valuable suggestion improvements."\
-                           "If takeaway is missing, provide a suggested takeaway for each slide",
+                           "Ensure a takeaway exists and suggest improvement or propose one.",
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Experts feedback checks', 
@@ -58,21 +55,33 @@ class LLMUtils:
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Slide memorability check', 
-                'request': "Summarize the main point of the slide in less than two sentences and provide the sentences, make sure they are memorable.Please concrete and valuable suggest improvements."\
-                           "Review the title and opening paragraph of each slide. Suggest improvements if they don't grab your attention.",
+                'request': "Summarize the main point of the slide in less than two sentences and provide the sentences."\
+                           "Please suggest concrete and valuable improvements for the slide to ensure the 2 summarized sentences are easy to summarize from the slide and easy to remember.",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
+            {'request_name': 'Slide title and openeing check', 
+                'request': "Review the title and opening paragraph of each slide. Suggest improvements if they don't grab your attention.",
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Slide audience check',
                 'request': "Read the slide from the perspective of a sceptic, supporter, and unfamiliar reader."\
-                           "Please concrete and valuable suggest improvements.",
+                           "Please suggest concrete and valuable improvements.",
                 'temperature': 0.6, 'top_p': 0.6 
             },
-            {'request_name': 'Slide weakness and counter points checks',
-                'request': "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness)."\
+            {'request_name': 'Slide weakness checks',
+                'request': "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness) and suggest improvements."\
                            "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
                            "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
                 'temperature': 0.6, 'top_p': 0.6 
-            }
+            },
+            {'request_name': 'Slide view from a harsh critic checks',
+                'request': "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns.",
+                'temperature': 0.6, 'top_p': 0.6 
+            },
+            {'request_name': 'Slide view from a debate critic checks',
+                'request': "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
+                'temperature': 0.6, 'top_p': 0.6 
+            },
         ]
         self.slide_text_review_llm_requests.extend(slide_text_external_requests)
 

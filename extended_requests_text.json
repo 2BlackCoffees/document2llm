@@ -1,7 +1,9 @@
 [
     {
      "request_name": "Summarize the slide", 
-     "request": "Please provide a summary of the slide within max 30 words."
+     "request": "Please provide a summary of the slide within max 30 words.",
+     "temperature": 0.6, 
+     "top_p": 0.6
     }
 ]
 
