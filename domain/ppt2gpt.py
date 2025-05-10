@@ -40,9 +40,11 @@ class PPT2GPT:
 
     def __get_title_details(self, shape: Dict):
         self.logger.debug(f"Shape for title: {pformat(shape)}")
-        title =  re.sub(r'^\s*', '', f"{shape['json']['shape']['text']}")      
-        title =  re.sub(r'\n', '', title)      
-        title =  re.sub(r'\s*$', '', title)      
+        title: str = ""
+        if 'text' in shape['json']['shape']:
+            title =  re.sub(r'^\s*', '', f"{shape['json']['shape']['text']}")      
+            title =  re.sub(r'\n', '', title)      
+            title =  re.sub(r'\s*$', '', title)      
         slide_info = f"Slide number {shape['json']['shape']['slide_number']} {title}"
         self.logger.info(slide_info)
         return title, slide_info
@@ -113,47 +115,59 @@ class PPT2GPT:
  
             self.logger.info(f"Analyzing slide number {slide_number}")
  
-            shape_descriptions: list = [] 
+            shape_descriptions_text_only: list = [] 
+            shape_descriptions_with_graphics: list = [] 
             for shape in slide.shapes:
                 if shape.has_text_frame:
-                    shape_descriptions.append(PPTReader.get_text_box_info(slide_number, shape))
+                    PPTReader.add_text_box_info(slide_number, shape, False, shape_descriptions_text_only)
+                    if self.want_selected_artistic_slide_requests:
+                        PPTReader.add_text_box_info(slide_number, shape, True, shape_descriptions_with_graphics)
  
                 elif shape.has_table: 
                     table = shape.table
-                    table_elements: list = []
-                    table_str: str = ""
-                    for row_idx, row in enumerate(table.rows, start = 1):
-                        table_str += "\n|"
-                        for col_idx, cell in enumerate(row.cells, start=1):
+                    table_md_str: str = ""
+                    first_row: bool = True
+                    for row in table.rows:
+                        table_md_str += "\n|"
+                        for cell in row.cells:
                             if cell.text_frame is not None:
                               text: str = cell.text_frame.text.replace("\n", " ")
-                              table_elements.append({'row': row_idx, 'col': col_idx, 'text': text})
-                              table_str += text + "|"
- 
-                    shape_descriptions.append(PPTReader.get_table_info(slide_number, shape, table, table_elements, table_str))
- 
+                              table_md_str += text + "|"
+                        if first_row: table_md_str += "\n" + ("-" * max(3, len(table_md_str)))
+                        first_row = False
+
+                    PPTReader.add_table_info(slide_number, shape, table, table_md_str, False, shape_descriptions_text_only)
+                    if self.want_selected_artistic_slide_requests:
+                        PPTReader.add_table_info(slide_number, shape, table, table_md_str, True, shape_descriptions_with_graphics)
+
                 elif shape.shape_type == MSO_SHAPE_TYPE.GROUP: 
-                    shape_descriptions.append(PPTReader.get_group_info(slide_number, shape))
+                    PPTReader.add_group_info(slide_number, shape, False, shape_descriptions_text_only)
+                    if self.want_selected_artistic_slide_requests:
+                        PPTReader.add_group_info(slide_number, shape, True, shape_descriptions_with_graphics)
                
                 else: 
-                    shape_descriptions.append(PPTReader.get_shape_type_info(slide_number, shape))
+                    PPTReader.add_shape_type_info(slide_number, shape, False, shape_descriptions_text_only)
+                    if self.want_selected_artistic_slide_requests:
+                        PPTReader.add_shape_type_info(slide_number, shape, True, shape_descriptions_with_graphics)
  
             title_value: str = None
             shape_title: Dict = None
             title_found: bool = False
             if hasattr(slide.shapes, "title") and hasattr(slide.shapes.title, "text") and slide.shapes.title.text is not None and len(slide.shapes.title.text) > 0:
                 title_value = slide.shapes.title.text
-                for shape_description in shape_descriptions:
+                for shape_description in shape_descriptions_text_only:
                     if shape_description["raw_text"] == title_value:
                         shape_title = shape_description
                         shape_title["json"]["shape"]["is_title"] = True
                         title_found = True
                 if not title_found:
-                    shape_description: Dict = PPTReader.create_title(slide_number, title_value)
+                    PPTReader.add_created_title(slide_number, title_value, False, shape_descriptions_text_only)
+                    if self.want_selected_artistic_slide_requests:
+                        PPTReader.add_created_title(slide_number, shape, True, shape_descriptions_with_graphics)
                     shape_title = shape_description
-                    shape_descriptions.append(shape_description)
+                    shape_descriptions_text_only.append(shape_description)
 
-            sorted_shapes: List = PPTReader.get_sorted_shapes_by_pos_y(shape_descriptions)
+            sorted_shapes: List = PPTReader.get_sorted_shapes_by_pos_y(shape_descriptions_text_only)
 
             slide_shapes_content, title, slide_info, reduced_slide_text = self.__get_slide_details(sorted_shapes, slide_number, shape_title)
             slide_content: Dict = {
@@ -171,12 +185,14 @@ class PPT2GPT:
                     checker: IChecker = TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
                     self.llm_access.set_checker(checker)
                     self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+                    self.logger.info(f"  >> {'=' * 20} Text slide request {slide_number} {title} done and documented {'=' * 20}")
 
                 if self.want_selected_artistic_slide_requests:
                     self.content_out.add_title(2, f"Check of artistic content for slide {slide_number}")
                     checker: IChecker = ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
                     self.llm_access.set_checker(checker)
                     self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+                    self.logger.info(f"  >> {'=' * 20} Artistic slide request {slide_number} {title} done and documented {'=' * 20}")
                     
             deck_content.append(slide_content)
 
@@ -187,5 +203,6 @@ class PPT2GPT:
             checker: IChecker = DeckChecker(self.llm_utils, self.selected_deck_requests, f' (Deck)', f' (Deck)')
             self.llm_access.set_checker(checker)
             self.__send_llm_requests_and_expand_output(formatted_deck_content_list, True)
+            self.logger.info(f"  >> {'=' * 20} Full deck request done and documented {'=' * 20}")
 
         
