@@ -4,7 +4,7 @@ from typing import List, Dict
 import time
 import re
 import os
-from domain.llm_utils import LLMUtils
+import json
 from domain.allm_access import AbstractLLMAccess, ContextWindowExceededError
 
 class LLMAccess(AbstractLLMAccess):
@@ -28,11 +28,12 @@ class LLMAccess(AbstractLLMAccess):
         return request_llm
     
     def _create_message(self, reviewer: str, content: str, request_name: str):
-
-        return [{"role": "system", "content": f"As {reviewer}, I am assigned the task of thoroughly reviewing key slides, with the goal of creating a high-quality document that exceeds expectations. To achieve this, I will conduct an in-depth analysis of the provided JSON file, which has been exported from a PowerPoint presentation. Specifically, I will focus on scrutinizing the complete text associated with each shape that makes up the slide, as represented in the JSON data. By leveraging the JSON structure as metadata, I will gain a deeper understanding of the slide's geometry and layout. However, in my analysis and subsequent documentation, I will exclusively refer to the original presentation deck, maintaining a focus on the content and design of the slides, without referencing the underlying JSON source."},
-                {"role": "user", "content": LLMUtils.get_llm_instructions()},
-                {"role": "user", "content": content}], \
-               request_name
+        request_list: List = [  {"role": "system", "content": f'[{self.llm_utils.get_llm_review_description(reviewer)}]'}]
+        if self.llm_utils.get_additional_context() is not None:
+            request_list.append({"role": "user",   "content": f'[{self.llm_utils.get_additional_context()}]'})
+        request_list.extend([   {"role": "user",   "content": f'[{self.llm_utils.get_llm_instructions()}]'},\
+                                {"role": "user",   "content": content}])
+        return request_list, request_name
 
     def _create_messages(self, request_inputs: List, content: str):
         llm_requests: List = []
@@ -63,7 +64,8 @@ class LLMAccess(AbstractLLMAccess):
         #pprint(request)
         return_message: str = None
 
-        self.logger.info(f'Requesting {request_name}')
+        self.logger.info(f'\nRequesting LLm with:\n{"-" * 20}\n  Model {request_name}, '+\
+                         f'request:\n{json.dumps(messages, sort_keys=True, indent=2, separators=(",", ": "))}')
         review = self.client.chat.completions.create(
             model=self.model_name,
             messages=messages,
@@ -72,6 +74,8 @@ class LLMAccess(AbstractLLMAccess):
         )
 
         return_message = re.sub(r'\'\s+.*refusal=.*,.*role=.*\)', '', re.sub(r'ChatCompletionMessage\(content=', '', str(review.choices[0].message.content.strip())))
+        formatted_message = "\n".join([ "  " + message for message in return_message.split("\n")])
+        self.logger.info(f'\nLLm response:\n{"-" * 13}\n{formatted_message}')
 
         return {
             'request_name': request_name,
