@@ -10,10 +10,11 @@ class LLMUtils:
         slide_text_external_requests: List = self.__read_json(slide_text_filename)
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
         deck_text_external_requests : List = self.__read_json(slide_deck_filename)
+        self.additional_context: str = None
         self.slide_artistic_content_review_llm_requests = [
             {'request_name': 'Color artistic review', 
                 'request': f"Consider how the various colors need some improvement to provide a more harmonious slide."\
-                           f"Please consider that {' '.join(color_palette)} are our main colors.",
+                           f"Consider that {' '.join(color_palette)} are our main colors.",
                 'temperature': 0.4, 'top_p': 0.4 
             },
             {'request_name': 'Size, position and shapes artistic review', 
@@ -26,7 +27,7 @@ class LLMUtils:
             },
             {'request_name': 'Global artistic check',
                 'request': f"Consider how the various colour, size, position and type of the shapes together with the various fonts, font color and the size of the text need some improvement to provide a more harmonious slide. "\
-                           f"Please consider that {' '.join(color_palette)} are our main colors.",
+                           f"Consider that {' '.join(color_palette)} are our main colors.",
                 'temperature': 0.7, 'top_p': 0.6 
             }
         ]
@@ -48,50 +49,17 @@ class LLMUtils:
                            "Please provide concrete and valuable suggestion improvements."\
                            "Ensure a takeaway exists and suggest improvement or propose one.",
                 'temperature': 0.3, 'top_p': 0.2 
-            },
-            {'request_name': 'Experts feedback checks', 
-                'request': "Consider what the reviewer might say for the slide if they read it."\
-                           "Please provide concrete and valuable suggest improvements.",
-                'temperature': 0.3, 'top_p': 0.2 
-            },
-            {'request_name': 'Slide memorability check', 
-                'request': "Summarize the main point of the slide in less than two sentences and provide the sentences."\
-                           "Please suggest concrete and valuable improvements for the slide to ensure the 2 summarized sentences are easy to summarize from the slide and easy to remember.",
-                'temperature': 0.3, 'top_p': 0.2 
-            },
-            {'request_name': 'Slide title and openeing check', 
-                'request': "Review the title and opening paragraph of each slide. Suggest improvements if they don't grab your attention.",
-                'temperature': 0.3, 'top_p': 0.2 
-            },
-            {'request_name': 'Slide audience check',
-                'request': "Read the slide from the perspective of a sceptic, supporter, and unfamiliar reader."\
-                           "Please suggest concrete and valuable improvements.",
-                'temperature': 0.6, 'top_p': 0.6 
-            },
-            {'request_name': 'Slide weakness checks',
-                'request': "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness) and suggest improvements."\
-                           "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
-                           "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
-                'temperature': 0.6, 'top_p': 0.6 
-            },
-            {'request_name': 'Slide view from a harsh critic checks',
-                'request': "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns.",
-                'temperature': 0.6, 'top_p': 0.6 
-            },
-            {'request_name': 'Slide view from a debate critic checks',
-                'request': "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
-                'temperature': 0.6, 'top_p': 0.6 
-            },
+            }
         ]
         self.slide_text_review_llm_requests.extend(slide_text_external_requests)
 
         self.deck_review_llm_requests = [
             {'request_name': 'Flow check', 
-                'request': "Please review the whole flow considering all slides. Please suggest reordering of slides if some slides are not in the right order.",
+                'request': "Review the whole flow considering all slides. Suggest reordering of slides and explain why your suggestion it if the slide order is not optimal.",
                 'temperature': 0.3, 'top_p': 0.4 
             },
             {'request_name': 'Consistency check', 
-                'request': "Please review the whole flow considering all slides. Please suggest missing slides if some slides are missing. Please provide concreate and detailed examples of the missing slides.",
+                'request': "Review the whole flow considering all slides. If any slide is missing, provide concreate and detailed examples of the slides that need to be added.",
                 'temperature': 0.3, 'top_p': 0.4 
             },
             {'request_name': 'Clarity checks', 
@@ -104,12 +72,12 @@ class LLMUtils:
             },
             {'request_name': 'Deck take away checks', 
                 'request': "Ensure the whole deck text has a clear, memorable takeaway."\
-                           "Please provide concrete and valuable suggestion improvements ensuring that the reader has a good understanding of the message conveyed by the dec.",
+                           "Provide concrete and valuable suggestion improvements ensuring that the reader has a good understanding of the message conveyed by the deck.",
                 'temperature': 0.4, 'top_p': 0.4 
             },
             {'request_name': 'Experts feedback checks', 
                 'request': "Consider what the reviewer might say for the deck if they read it."\
-                           "Please provide concrete and valuable suggest improvements.",
+                           "Provide concrete and valuable suggest improvements.",
                 'temperature': 0.4, 'top_p': 0.4 
             },
             {'request_name': 'Deck memorability check', 
@@ -119,7 +87,7 @@ class LLMUtils:
             },
             {'request_name': 'Deck audience check',
                 'request': "Read the deck from the perspective of a sceptic, supporter, and unfamiliar reader."\
-                           "Please concrete and valuable suggest improvements.",
+                           "Provide concrete and valuable suggest improvements.",
                 'temperature': 0.5, 'top_p': 0.6 
             },
             {'request_name': 'Deck weakness and counter points checks',
@@ -127,9 +95,19 @@ class LLMUtils:
                            "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns."\
                            "Imagine we're in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the deck?",
                 'temperature': 0.5, 'top_p': 0.6 
-            }
+            },
+            {'request_name': 'Roadmap',
+                'request': "Describe the detailed technical roadmap for innovation that appears from the deck content. Propose suggestion for improvement assuming a harsh critic wanted to make it disruptive.",
+                'temperature': 0.6, 'top_p': 0.6 
+            },
         ]
         self.deck_review_llm_requests.extend(deck_text_external_requests)
+
+    def set_additional_context(self, additional_context: str) -> None:
+        self.additional_context = additional_context
+
+    def get_additional_context(self) -> str:
+        return self.additional_context
     
     def set_default_temperature_top_p_requests(self, list_requests: List, new_temperature: float, new_top_p: float) -> None:
         for request in list_requests:
@@ -137,7 +115,6 @@ class LLMUtils:
                 request['temperature'] = new_temperature
             if new_top_p is not None:
                 request['top_p'] = new_top_p
-
 
     def set_default_temperature(self, new_temperature: float) -> None:
         """
@@ -218,12 +195,21 @@ class LLMUtils:
                 parameter_list.append(int(parameter))
         return parameter_list
     
-    @staticmethod    
-    def get_llm_instructions():
-        return f"""[Consider the following json for text boxes or groups of shapes the json information represents shapes of a pptx slide, your analysis shall take into account the full text present in the slide that can be extracted from the provided JSON as follows (Please NEVER EVER mention this JSON in your response, mention you are analyzing a slide instead):
+    def get_llm_review_description(self, reviewer: str) -> str:
+        return f"- You impersonate {reviewer}, your tasks consisting in thoroughly reviewing slides of a deck keeping the characteristics leading to excellence expected from {reviewer}.\n"+\
+                "- The data you will analyze is an export of a deck into JSON data.\n"+\
+                "- Do not comment on the JSON source itself.\n"+\
+                "- The JSON structure will provide text content and shape's geometry and layout.\n"+\
+                "- In your analysis and  documentation, you will exclusively refer to the content of the JSON structure representing the slides of the deck."
+
+    # TODO: This method will have to be better integrated to provide graphic or table details according to the request 
+    def get_llm_instructions(self, request_has_graphical: bool = False):
+        instructions: str = f"""Consider the following json for text boxes or groups of shapes the json information represents shapes of a pptx slide, your analysis shall take into account the full text present in the slide that can be extracted from the provided JSON as follows (Please NEVER EVER mention this JSON in your response, mention you are analyzing a slide instead):
                                 
                             "shape": {{
-                                "slide_number": This is the slide number: many shapes per slide will be provided,
+                                "slide_number": This is the slide number: many shapes per slide will be provided,"""
+        if request_has_graphical:
+            instructions += """
                                 "rotation_degrees": rotation of the shape in degree,
                                 "shape_fore_color": filled colour of the shape: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
                                 "line":{{
@@ -239,20 +225,24 @@ class LLMUtils:
                                     "width": This is the width of the shape Expressed in English Metric Units (EMU),
                                     "height": This is the height of the shape Expressed in English Metric Units (EMU) 
                                 }},
-                                "text": This is the text contained in the shape: it will contain a newline character (“n”) separating each paragraph and a vertical-tab (“v”) character for each line break,
                                 "font_details": {{
                                     "font_name": Name of the font,
                                     "text_color": Color of the text: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
                                     "font_size": Size of the font in points,
                                     "text_impacted": Part of the text mentioned before having the specific font details: Can be an array of strings
                                 }}
+            """
+            instructions += """
+                                "text": This is the text contained in the shape: it will contain a newline character (“n”) separating each paragraph and a vertical-tab (“v”) character for each line break,
                                 "type": This is the type of the shape,
                                 "is_title": This says if the text is the title of the slide
                             }}
                          
                          And consider following json for tables:
                             "shape": {{
-                                "slide_number": This is the slide number,
+                                "slide_number": This is the slide number,"""
+        if request_has_graphical:
+            instructions += """
                                 "position": {{
                                     "from_left": This is the x position of the shape from the left,
                                     "from_top": This is the y position of the shape from the top
@@ -264,8 +254,12 @@ class LLMUtils:
                                 "table_size": {{
                                     "number_cols": Number of columns of the table,
                                     "number_rows": Number of rows for the table
-                                }},
-                                "table_cells": [ array composed of json objects: row: row number, col: column number, text: associated text],
+                                }},"""
+        instructions += """
+
+                                "table_cells": The table will be provided in a mark down format,
                                 "type": "table"
-                                }} ]
+                                }} 
                             """
+        instructions = instructions.replace('\\"', '"').replace('\\n', '\n')
+        return instructions
