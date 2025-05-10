@@ -3,16 +3,18 @@ from typing import List
 import json
 from logging import Logger
 from domain.ichecker import IChecker
+from domain.llm_utils import LLMUtils
 
 class ContextWindowExceededError(Exception):
     pass
 
 class AbstractLLMAccess(ABC):
-    def __init__(self, logger: Logger, reviewer: str, model_name: str): 
+    def __init__(self, logger: Logger, reviewer: str, model_name: str, llm_utils: LLMUtils): 
         self.reviewer = reviewer
         self.logger = logger
         self.checker = None
         self.model_name = model_name # "llama3-70b"  # or use gpt-4o-mini, gpt-4o as per access requested
+        self.llm_utils = llm_utils
 
     def set_checker(self, checker: IChecker):
         self.checker = checker
