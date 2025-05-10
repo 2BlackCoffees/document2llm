@@ -15,8 +15,7 @@ reviewer_name: str = "Elon Musk"
 from_document: str = ""
 model_name: str = "llama3-70b"
 to_document: str = None
-
-
+context_path: str = None
 
 llm_utils = LLMUtils(["green", "purple"], 
                      os.getenv("PPT2LLM_REQUESTS_SLIDE_TEXT", default=""), 
@@ -32,6 +31,7 @@ parser.add_argument('--to_document', type=str, help='Specify the review document
 parser.add_argument('--model_name', type=str, help=f'Specify the name of the LLM model to use. Default is {model_name}')
 parser.add_argument('--skip_slides', type=csv_, help='Specify slides to skip: 1,2-5,8: Cannot be used with only_slides')
 parser.add_argument('--only_slides', type=csv_, help='Specify slides to keep: 1,2-5,8: Cannot be used with skip_slides')
+parser.add_argument('--context_path', type=str, help='Path to a text file (whatever extension) where the contect of the document is described. If not orovided, headings will be used as context.')
 parser.add_argument('--text_slide_requests', type=csv_, help=f'Specify slide requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_slide_text_requests_and_ids_str()} ]], default is {selected_text_slide_requests}')
 parser.add_argument('--no_text_slide_requests',action="store_true", help=f'Skip text slide by slide check')
 parser.add_argument('--artistic_slide_requests', type=csv_, help=f'Specify slide requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_slide_artistic_requests_and_ids_str()} ]], default is {selected_artistic_slide_requests}')
@@ -72,7 +72,8 @@ if args.force_top_p:
     llm_utils.set_default_top_p(args.force_top_p)
 if args.to_document:
     to_document = args.to_document
-
+if args.context_path:
+    context_path = args.context_path
 if args.reviewer_name:
     reviewer_name = args.reviewer_name
 
@@ -90,4 +91,4 @@ if args.only_slides:
 ApplicationService(from_document, to_document, slides_to_skip, slides_to_keep, args.detailed_analysis, \
                    reviewer_name, args.simulate_calls_only, logging_level, llm_utils, \
                    selected_text_slide_requests, selected_artistic_slide_requests, \
-                   selected_deck_requests, model_name)
+                   selected_deck_requests, model_name, context_path)

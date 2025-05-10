@@ -18,7 +18,7 @@ class ApplicationService:
     def __init__(self, document_path: str, to_document: str, slides_to_skip: List, slides_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
                  simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
-                 selected_deck_requests: List, model_name: str, consider_bullets_for_crlf: bool= True):
+                 selected_deck_requests: List, model_name: str, context_path: str, consider_bullets_for_crlf: bool= True):
 
         program_name = os.path.basename(sys.argv[0])
         logger = logging.getLogger(f'loggername_{program_name}')
@@ -30,6 +30,17 @@ class ApplicationService:
             logger.error(f'The file {document_path} does not seem to exist ({os.getcwd()}).')
             exit(1)
 
+        if context_path is not None:
+            path = Path(context_path)
+            if path.is_file():
+                logger.info(f"Opening external context related request file: {context_path}")
+                with open(context_path) as f:
+                    force_context_content:str = "\n".join(f.readlines())
+                    llm_utils.set_additional_context(force_context_content)
+                    logger.info(f"Using context provided in command line through filename {context_path}:\n{force_context_content}")
+            else:
+                logger.warning(f"File {context_path} could not be read.")
+                
         information_user: List = []
         if slides_to_skip is not None and len(slides_to_skip) > 0:
             information_user.append(f"Slides to be skipped are: {slides_to_skip}")
@@ -59,9 +70,9 @@ class ApplicationService:
             
         llm_access: AbstractLLMAccess = None
         if detailed_analysis:
-            llm_access = LLMAccessDetailed(logger, reviewer_name, model_name) if not simulate_calls_only else LLMAccessDetailedSimulateCalls(logger, reviewer_name, model_name)
+            llm_access = LLMAccessDetailed(logger, reviewer_name, model_name, llm_utils) if not simulate_calls_only else LLMAccessDetailedSimulateCalls(logger, reviewer_name, model_name, llm_utils)
         else:
-            llm_access = LLMAccess(logger, reviewer_name, model_name) if not simulate_calls_only else LLMAccessSimulateCalls(logger, reviewer_name, model_name)
+            llm_access = LLMAccess(logger, reviewer_name, model_name, llm_utils) if not simulate_calls_only else LLMAccessSimulateCalls(logger, reviewer_name, model_name, llm_utils)
 
         PPT2GPT(document_path, slides_to_skip, slides_to_keep, logger, content_out, llm_utils, selected_text_slide_requests, \
                 selected_artistic_slide_requests, selected_deck_requests, llm_access, consider_bullets_for_crlf)
