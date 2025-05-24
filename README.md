@@ -22,6 +22,7 @@ This Python script utilizes a Large Language Model (LLM) to review and provide f
     - [LLM test Requests to be applied on the whole deck are:](#llm-test-requests-to-be-applied-on-the-whole-deck-are)
   - [LLM Model](#llm-model)
   - [Example Use Cases](#example-use-cases)
+  - [Improvements](#improvements)
   - [Troubleshooting](#troubleshooting)
 
 ## Important Security Consideration
@@ -110,7 +111,6 @@ The program accepts the following options:
 *  `--simulate_calls_only`
                         Do not perform the calls to LLM: used for debugging purpose.
 
-
 ## Default analysis
 
 ### LLM text Requests to be applied on each slide are:
@@ -150,7 +150,15 @@ python ppt2gpt.py --text_slide_requests 0,1,2 --deck_requests 0,1,2,3 presentati
 Review a PPT for artistic and expert feedback:
 python ppt2gpt.py --artistic_slide_requests 0,1,2 --deck_requests 5,6,7,8,9 presentation.pptx
 ```
+## Improvements
 
+* The script is lacking a way to provide more granularity to the context like: 
+  * Technical Deck for sales professional aimed to present our capabilities to technical stakeholders, 
+  * Deck written by and for senior cloud technical architects, 
+  * Deck written to present our roadmap to top management having low technical background,
+  * ...
+* When a bunch of sentences are provided through bullet points, we should notfy LLM that bullet points are in use.
+* Filter out dates, page numbers or any text that is not composed of words
 ## Troubleshooting
 
 If you encounter any issues, please check the logs for error messages.
