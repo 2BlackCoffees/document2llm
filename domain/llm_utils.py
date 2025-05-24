@@ -218,12 +218,12 @@ class LLMUtils:
                                     "line_width_points": line thickness in points
                                 }},
                                 "position": {{
-                                    "from_left": This is the x position of the shape from the left,
-                                    "from_top": This is the y position of the shape from the top
+                                    "from_left": This is the x position of the shape from the left expressed in percentage of the width of the slide,
+                                    "from_top": This is the y position of the shape from the top expressed in percentage of the height of the slide
                                 }},
                                 "size": {{
-                                    "width": This is the width of the shape Expressed in English Metric Units (EMU),
-                                    "height": This is the height of the shape Expressed in English Metric Units (EMU) 
+                                    "width": This is the width of the shape Expressed in percentage of the width of the slide,
+                                    "height": This is the height of the shape Expressed  in percentage of the hgight of the slide
                                 }},
                                 "font_details": {{
                                     "font_name": Name of the font,
@@ -244,12 +244,12 @@ class LLMUtils:
         if request_has_graphical:
             instructions += """
                                 "position": {{
-                                    "from_left": This is the x position of the shape from the left,
-                                    "from_top": This is the y position of the shape from the top
+                                    "from_left": This is the x position of the shape from the left expressed in percentage of the width of the slide,
+                                    "from_top": This is the y position of the shape from the top expressed in percentage of the height of the slide
                                 }},
                                 "size": {{
-                                    "width": This is the width of the shape,
-                                    "height": This is the height of the shape
+                                    "width": This is the width of the shape expressed in percentage of the width of the slide,
+                                    "height": This is the height of the shape expressed in percentage of the height of the slide
                                 }},
                                 "table_size": {{
                                     "number_cols": Number of columns of the table,

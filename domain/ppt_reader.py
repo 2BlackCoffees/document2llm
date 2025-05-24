@@ -3,39 +3,53 @@ import re
 from pptx.enum.dml import MSO_COLOR_TYPE, MSO_FILL
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pprint import pprint, pformat
-from pathlib import Path
+from typing import Tuple
 class PPTReader:
 
     @staticmethod
-    def is_paragraph(text: str, paragraph_start_min_word_length: str = 3, paragraph_start_min_word_numbers: str = 1) -> bool:
+    def is_paragraph(md_text: str, paragraph_start_min_word_length: str = 3, paragraph_start_min_word_numbers: str = 1) -> bool:
+        text:str = md_text.replace('**', '')
         minwords: int = int(paragraph_start_min_word_numbers)  
         regexp: str = f'(\\w{{{paragraph_start_min_word_length},}}\\b\\s+){{{minwords},}}\w{{{paragraph_start_min_word_length},}}\\b'
         paragraph_found: bool = (re.search(regexp, text) is not None)
         return paragraph_found
 
     @staticmethod  
+    def __get_md_formatted_string(shape, attribute_name: str):
+        string: str = ""
+        if hasattr(shape, attribute_name):
+            for paragraph in shape.text_frame.paragraphs:
+                for run in paragraph.runs:
+                    text: str = re.sub('\s+', ' ', run.text)
+                    bold_str: str = ""
+                    if text != ' ' and text != '' and hasattr(run, 'font') and run.font.bold:
+                            bold_str = "**" 
+                    string += f"{bold_str}{text}{bold_str}" 
+                string += "\n"
+        return string.replace('****', '')
+                    
+    @staticmethod  
     def __check_recursively_for_text(shape, text_list):
         for cur_shape in shape.shapes:
             if cur_shape.shape_type == MSO_SHAPE_TYPE.GROUP:
                 PPTReader.__check_recursively_for_text(cur_shape, text_list)
             else:
-                if hasattr(cur_shape, "text"):
-                    text_list.append(cur_shape.text)
+                text_list.append(PPTReader.__get_md_formatted_string(cur_shape, 'text'))
         return text_list
     
-    def _get_shape_graphical_infos(shape: Dict, shape_details: Dict) -> Dict:
+    def _get_shape_graphical_infos(shape: Dict, shape_details: Dict, slide_size: Tuple) -> Dict:
 
-
+        shape_width, shape_height = slide_size
         if hasattr(shape, 'left') and hasattr(shape, 'right'): 
             shape_details["shape"]["position"] = {
-                    "from_left": shape.left,
-                    "from_top": shape.top
+                    "from_left (% size)": f'{shape.left * 100.0 / shape_width:.3f}% of slide width',
+                    "from_top (% size)": f'{shape.top * 100.0 / shape_height:.3f}% of slide height'
             }
 
         if hasattr(shape, 'width') and hasattr(shape, 'height'): 
             shape_details["shape"]["size"] = {
-                    "width (EMU)": shape.width,
-                    "height (EMU)": shape.height
+                    "width (% size)": shape.width * 100.0 / shape_width,
+                    "height (% size)": shape.height * 100.0 / shape_height
             }
 
         if hasattr(shape, 'rotation'): 
@@ -83,26 +97,25 @@ class PPTReader:
                         font_details["text_color"] = "None"           
                     text_style.append(font_details)    
             shape_details["shape"]["font_details"] = text_style
-            shape_details["shape"]["text"] = shape.text_frame.text
+            shape_details["shape"]["text"] = PPTReader.__get_md_formatted_string(shape, 'text_frame')
 
         return shape_details
 
-    def _get_shape_infos(slide_number: int, shape: Dict, need_graphical: bool) -> Dict:
+    def _get_shape_infos(slide_number: int, shape: Dict, need_graphical: bool, slide_size: Tuple) -> Dict:
         shape_details: Dict =  {
             "shape": {
                 "slide_number": slide_number,
 
             }
         }
-        if hasattr(shape, 'text_frame'):
-            shape_details["shape"]["text"] = shape.text_frame.text
+        shape_details["shape"]["text"] = PPTReader.__get_md_formatted_string(shape, 'text_frame')
             
         if need_graphical:
-            shape_details = PPTReader._get_shape_graphical_infos(shape, shape_details)
+            shape_details = PPTReader._get_shape_graphical_infos(shape, shape_details, slide_size)
             
         return shape_details
 
-    def __encapsulate_shape(shape: Dict, text: str, json_shape: Dict) -> Dict:
+    def __encapsulate_shape(shape: Dict, text: str, json_shape: Dict, slide_size: Tuple) -> Dict:
         new_json = json_shape.copy()
         if hasattr(shape, 'shape_type'):
             new_json ["shape"]["type"] = str(shape.shape_type)
@@ -111,63 +124,64 @@ class PPTReader:
         else:
             new_json ["shape"]["type"] = 'NA'
 
+        shape_width, shape_height = slide_size
+
         return {
-            'y': shape.top if hasattr(shape, 'top') else shape['top'], 
-            'x': shape.left if hasattr(shape, 'left') else shape['left'], 
+            'y': f"{(shape.top if hasattr(shape, 'top') else shape['top']) * 100.0 / shape_height:.3f}% of slide height", 
+            'x': f"{(shape.left if hasattr(shape, 'left') else shape['left']) * 100.0 / shape_width:.3f}% of slide width", 
             'json': new_json,
             'raw_text': str(new_json["shape"]["text"]) if text is None else text
         }
-    def add_text_box_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List) -> None:
-        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical)
+    def add_text_box_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
+        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         json_shape["shape"]["type"] = str(MSO_SHAPE_TYPE.TEXT_BOX)
         json_shape["shape"]["is_title"] = "False"
-        final_json: Dict = PPTReader.__encapsulate_shape(shape, None, json_shape)
+        final_json: Dict = PPTReader.__encapsulate_shape(shape, None, json_shape, slide_size)
         if PPTReader.is_paragraph(final_json['raw_text']):
             shape_descriptions.append(final_json)
     
-    def add_group_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List) -> None:
-        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical)
+    def add_group_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
+        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         text_list: list = []
         text: str = "\n".join(PPTReader.__check_recursively_for_text(shape, text_list))
-        final_json: Dict = PPTReader.__encapsulate_shape(shape, text, json_shape)
+        final_json: Dict = PPTReader.__encapsulate_shape(shape, text, json_shape, slide_size)
         if PPTReader.is_paragraph(final_json['raw_text']):
             shape_descriptions.append(final_json)
     
-    def add_table_info(slide_number: int, shape: Dict, table: Dict, table_str: str, need_graphical: bool, shape_descriptions: List) -> None:
-        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical)
+    def add_table_info(slide_number: int, shape: Dict, table: Dict, table_str: str, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
+        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         json_shape["shape"]["table_size"] = {
              "number_cols": len(table.rows[0].cells),
              "number_rowss": len(table.rows)
         }
         json_shape["shape"]["mytype"] = "table"
-        json_shape["shape"]["table_cells"] = table_str # [ element for element in table_elements]
+        json_shape["shape"]["table_cells"] = table_str 
 
-        shape_descriptions.append(PPTReader.__encapsulate_shape(shape, table_str, json_shape))
+        shape_descriptions.append(PPTReader.__encapsulate_shape(shape, table_str, json_shape, slide_size))
 
-    def add_shape_type_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List) -> None:
-        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical)
+    def add_shape_type_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
+        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         json_shape["shape"]["type"] = "shape_type"
         text: str = ""
         if "text" in json_shape["shape"].keys():
             text = json_shape["shape"]["text"]
 
-        shape_descriptions.append(PPTReader.__encapsulate_shape(shape, text, json_shape))
+        shape_descriptions.append(PPTReader.__encapsulate_shape(shape, text, json_shape, slide_size))
 
-    def add_created_title(slide_number: int, title_value: str, need_graphical: bool, shape_descriptions: List) -> None:
+    def add_created_title(slide_number: int, title_value: str, need_graphical: bool, shape_descriptions: List, slide_size) -> None:
         shape: Dict = {
             'top': 0,
             'left': 0,
-            'right': 0,            
-            'width': len(title_value),
-            'height': 10,
+            'right': 0,
+            'width': len(title_value) * 10000,
+            'height': 10000,
             'shape_type': "ForcedTitle"
         }
-        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical)
+        json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         json_shape["shape"]["type"] = str(MSO_SHAPE_TYPE.TEXT_BOX)
         json_shape["shape"]["is_title"] = "True"
         json_shape["shape"]["text"] = title_value
-        shape_descriptions.append(PPTReader.__encapsulate_shape(shape, title_value, json_shape))
-
+        shape_descriptions.append(PPTReader.__encapsulate_shape(shape, title_value, json_shape, slide_size))
 
     def get_sorted_shapes_by_pos_y(shapes: List) -> List:
         return sorted(shapes, key = lambda shape_dict: shape_dict['y'])

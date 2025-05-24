@@ -2,7 +2,7 @@ import re
 import json
 import traceback
 from pprint import pformat
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from logging import Logger
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -50,7 +50,7 @@ class PPT2GPT:
         return title, slide_info
 
     def __get_slide_details(self, sorted_shapes: List, slide_number: int, shape_title: Dict):
-            slide_shapes_content: List = [] # self.utils.get_llm_instructions() + "\n"
+            slide_shapes_content: List = [] 
             title: str = ''
             slide_info: str = ''
             reduced_slide_text: List = []
@@ -95,6 +95,7 @@ class PPT2GPT:
     def __ppt2gpt(self):
 
         deck_content: List = []
+        slide_size: Tuple = (self.document.slide_width, self.document.slide_height)
         for slide_idx, slide in enumerate(self.document.slides):
 
             slide_number: int = slide_idx + 1
@@ -119,9 +120,9 @@ class PPT2GPT:
             shape_descriptions_with_graphics: list = [] 
             for shape in slide.shapes:
                 if shape.has_text_frame:
-                    PPTReader.add_text_box_info(slide_number, shape, False, shape_descriptions_text_only)
+                    PPTReader.add_text_box_info(slide_number, shape, False, shape_descriptions_text_only, slide_size)
                     if self.want_selected_artistic_slide_requests:
-                        PPTReader.add_text_box_info(slide_number, shape, True, shape_descriptions_with_graphics)
+                        PPTReader.add_text_box_info(slide_number, shape, True, shape_descriptions_with_graphics, slide_size)
  
                 elif shape.has_table: 
                     table = shape.table
@@ -136,38 +137,47 @@ class PPT2GPT:
                         if first_row: table_md_str += "\n" + ("-" * max(3, len(table_md_str)))
                         first_row = False
 
-                    PPTReader.add_table_info(slide_number, shape, table, table_md_str, False, shape_descriptions_text_only)
+                    PPTReader.add_table_info(slide_number, shape, table, table_md_str, False, shape_descriptions_text_only, slide_size)
                     if self.want_selected_artistic_slide_requests:
-                        PPTReader.add_table_info(slide_number, shape, table, table_md_str, True, shape_descriptions_with_graphics)
+                        PPTReader.add_table_info(slide_number, shape, table, table_md_str, True, shape_descriptions_with_graphics, slide_size)
 
                 elif shape.shape_type == MSO_SHAPE_TYPE.GROUP: 
-                    PPTReader.add_group_info(slide_number, shape, False, shape_descriptions_text_only)
+                    PPTReader.add_group_info(slide_number, shape, False, shape_descriptions_text_only, slide_size)
                     if self.want_selected_artistic_slide_requests:
-                        PPTReader.add_group_info(slide_number, shape, True, shape_descriptions_with_graphics)
+                        PPTReader.add_group_info(slide_number, shape, True, shape_descriptions_with_graphics, slide_size)
                
                 else: 
-                    PPTReader.add_shape_type_info(slide_number, shape, False, shape_descriptions_text_only)
+                    PPTReader.add_shape_type_info(slide_number, shape, False, shape_descriptions_text_only, slide_size)
                     if self.want_selected_artistic_slide_requests:
-                        PPTReader.add_shape_type_info(slide_number, shape, True, shape_descriptions_with_graphics)
+                        PPTReader.add_shape_type_info(slide_number, shape, True, shape_descriptions_with_graphics, slide_size)
  
+            sorted_shapes: List = PPTReader.get_sorted_shapes_by_pos_y(shape_descriptions_text_only)
             title_value: str = None
             shape_title: Dict = None
             title_found: bool = False
-            if hasattr(slide.shapes, "title") and hasattr(slide.shapes.title, "text") and slide.shapes.title.text is not None and len(slide.shapes.title.text) > 0:
+            if hasattr(slide.shapes, "title") and hasattr(slide.shapes.title, "text") and \
+               slide.shapes.title.text is not None and len(slide.shapes.title.text) > 0:
                 title_value = slide.shapes.title.text
-                for shape_description in shape_descriptions_text_only:
-                    if shape_description["raw_text"] == title_value:
+                title_value: str = re.sub(r'\*\*', '', title_value)
+                self.logger.debug(f"Title shape found contains text: {title_value}")
+                for shape_description in sorted_shapes:
+                    raw_text: str = re.sub(r'\n$', '', shape_description["raw_text"])
+                    raw_text: str = re.sub(r'\*\*', '', raw_text)
+                    if raw_text == title_value:
                         shape_title = shape_description
                         shape_title["json"]["shape"]["is_title"] = True
                         title_found = True
+                        self.logger.debug(f'Found a shape with same text as title:\n{json.dumps(shape_description, sort_keys=True, indent=2, separators=(",", ": "))}')
                 if not title_found:
-                    PPTReader.add_created_title(slide_number, title_value, False, shape_descriptions_text_only)
+                    PPTReader.add_created_title(slide_number, title_value, False, shape_descriptions_text_only, slide_size)
                     if self.want_selected_artistic_slide_requests:
-                        PPTReader.add_created_title(slide_number, shape, True, shape_descriptions_with_graphics)
+                        PPTReader.add_created_title(slide_number, shape, True, shape_descriptions_with_graphics, slide_size)
                     shape_title = shape_description
                     shape_descriptions_text_only.append(shape_description)
 
-            sorted_shapes: List = PPTReader.get_sorted_shapes_by_pos_y(shape_descriptions_text_only)
+            self.logger.debug(f'Not sorted shapes: {json.dumps(shape_descriptions_text_only, sort_keys=True, indent=2, separators=(",", ": "))}')
+            self.logger.debug(f'Sorted shapes: {json.dumps(sorted_shapes, sort_keys=True, indent=2, separators=(",", ": "))}')
+            self.logger.debug(f'shape_title: {json.dumps(shape_title, sort_keys=True, indent=2, separators=(",", ": "))}')
 
             slide_shapes_content, title, slide_info, reduced_slide_text = self.__get_slide_details(sorted_shapes, slide_number, shape_title)
             slide_content: Dict = {
