@@ -5,6 +5,7 @@ import time
 import re
 import os
 import json
+import sys
 from domain.allm_access import AbstractLLMAccess, ContextWindowExceededError
 
 class LLMAccess(AbstractLLMAccess):
@@ -64,11 +65,22 @@ class LLMAccess(AbstractLLMAccess):
         #pprint(request)
         return_message: str = None
 
-        self.logger.info(f'\nRequesting LLm with:\n{"-" * 20}\n  Model {request_name}, '+\
-                         f'request:\n{json.dumps(messages, sort_keys=True, indent=2, separators=(",", ": "))}')
+        reformatted_messages: List = []
+
+        for message in messages:
+            reformatted_message: dict = {}
+            for key, value in message.items():
+                if isinstance(value, str):
+                    value = value.replace('\\uf0e0', '')
+                reformatted_message[key] = value
+            reformatted_messages.append(reformatted_message)
+
+        self.logger.debug(f'\nRequesting LLm with:\n{"-" * 20}\n  Request name {request_name} '+\
+                         f'\n  request JSON Dumped:\n  {"-" * 20}\n{json.dumps(reformatted_messages, sort_keys=True, indent=2, separators=(",", ": "))}'+\
+                         f'\n  request NON JSON Dumped:\n  {"-" * 24}:\n{reformatted_messages}')
         review = self.client.chat.completions.create(
             model=self.model_name,
-            messages=messages,
+            messages=reformatted_messages,
             temperature=temperature,
             top_p=top_p
         )
