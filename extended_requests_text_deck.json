@@ -1,7 +1,9 @@
 [
     {
      "request_name": "Summarize the deck", 
-     "request": "Please provide a summary of the deck within max 200 words."
+     "request": "Please provide a summary of the deck within max 50 words.",
+     "temperature": 0.3, "top_p": 0.2 
     }
-]
+ 
+ ]
 

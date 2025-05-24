@@ -4,6 +4,66 @@
      "request": "Please provide a summary of the slide within max 30 words.",
      "temperature": 0.6, 
      "top_p": 0.6
-    }
+    },
+
+    {
+        "request_name": "Ensure convincing roadmap message", 
+        "request": "Extract the roadmap out of the slide a customer would read. Challenge the roadmap you extracted and provide compelling advices for improvement.",
+        "temperature": 0.6, 
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Verify the what", 
+        "request": "Ensure that the 'WHAT' is clearly described and not overwhelmed by the 'HOW'.",
+        "temperature": 0.3, "top_p": 0.2 
+       },
+       {
+           
+        "request_name": "Experts feedback checks", 
+        "request": "Consider what the reviewer might say for the slide if they read it. Provide concrete and valuable suggest improvements.",
+        "temperature": 0.3, "top_p": 0.2 
+       },
+       {
+           "request_name": "Slide memorability check", 
+           "request": "Summarize the main point of the slide in less than two sentences and provide the sentences. Suggest concrete and valuable improvements for the slide to ensure the 2 summarized sentences are easy to summarize from the slide and easy to remember.",
+           "temperature": 0.3, "top_p": 0.2 
+       },
+   {
+       "request_name": "Slide title and openeing check", 
+       "request": "Review the title and opening paragraph of each slide. Suggest improvements if they do not grab your attention.",
+       "temperature": 0.3, "top_p": 0.2 
+   },
+   {
+       "request_name": "Slide audience check",
+       "request": "Read the slide from the perspective of a sceptic, supporter, and unfamiliar reader. Suggest concrete and valuable improvements.",
+       "temperature": 0.6, "top_p": 0.6 
+   },
+   {
+       "request_name": "Slide weakness checks",
+       "request": "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness) and suggest improvements. Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns. Imagine we are in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
+       "temperature": 0.6, "top_p": 0.6 
+   },
+   { 
+       "request_name": "Slide view from a harsh critic checks",
+       "request": "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns.",
+       "temperature": 0.6, "top_p": 0.6 
+   },
+   {
+       "request_name": "Slide view from a debate critic checks",
+       "request": "Imagine we are in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
+       "temperature": 0.6, "top_p": 0.6 
+   },
+   {
+       "request_name": "Roadmap",
+       "request": "Describe the detailed technical roadmap for innovation that appears from the slide content. Propose suggestion for improvement assuming a harsh critic wanted to make it disruptive.",
+       "temperature": 0.6, "top_p": 0.6 
+   },
+   {
+       "request_name": "Verify the Flow", 
+       "request": "Ensure that the flow in the slide brings a comprehensive message that will not confuse the reader but instead brings a clear message regarding what the slide depicts.",
+       "temperature": 0.6, "top_p": 0.6 
+   }
+   
+   
 ]
 
