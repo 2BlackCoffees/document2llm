@@ -74,7 +74,7 @@ class PPT2GPT:
                 self.logger.debug(pformat(sorted_shapes))
             return slide_shapes_content, title, slide_info, reduced_slide_text
     
-    def __send_llm_requests_and_expand_output(self, content_to_check: List, print_title: bool) -> None:
+    def __send_llm_requests_and_expand_output(self, content_to_check: List, print_title: bool, slide_info: str) -> None:
             
             result = self.llm_access.check(content_to_check)
 
@@ -83,7 +83,7 @@ class PPT2GPT:
                     self.content_out.add_title(2, f"{response['request_name']} (temperature: {response['temperature']}, top_p: {response['top_p']})")
                 else:
                     self.content_out.document(f"**{response['request_name']}**")
-                self.content_out.document(response['response'])
+                self.content_out.document_response(slide_info, response['response'])
 
     def __print_slide_keep_skip_info(self, keep_skip_info: str) -> None:
         self.logger.info(keep_skip_info)
@@ -187,21 +187,22 @@ class PPT2GPT:
                 "reduced_slide_text": reduced_slide_text
             }
 
+            slide_info: str = f'{slide_number} {title}'
             if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
-                self.content_out.add_title(1, f"Analyzing slide {slide_number} {title}")
+                self.content_out.add_title(1, f"Analyzing slide {slide_info}")
 
                 if self.want_selected_text_slide_requests:
                     self.content_out.add_title(2, f"Check of text content for slide {slide_number}")
                     checker: IChecker = TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
                     self.llm_access.set_checker(checker)
-                    self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+                    self.__send_llm_requests_and_expand_output(slide_content["shapes"], False, slide_info)
                     self.logger.info(f"  >> {'=' * 20} Text slide request {slide_number} {title} done and documented {'=' * 20}")
 
                 if self.want_selected_artistic_slide_requests:
                     self.content_out.add_title(2, f"Check of artistic content for slide {slide_number}")
                     checker: IChecker = ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})')
                     self.llm_access.set_checker(checker)
-                    self.__send_llm_requests_and_expand_output(slide_content["shapes"], False)
+                    self.__send_llm_requests_and_expand_output(slide_content["shapes"], False, slide_info)
                     self.logger.info(f"  >> {'=' * 20} Artistic slide request {slide_number} {title} done and documented {'=' * 20}")
                     
             deck_content.append(slide_content)
@@ -212,7 +213,7 @@ class PPT2GPT:
                                                   for slide_number, slide_content in enumerate(deck_content) ]
             checker: IChecker = DeckChecker(self.llm_utils, self.selected_deck_requests, f' (Deck)', f' (Deck)')
             self.llm_access.set_checker(checker)
-            self.__send_llm_requests_and_expand_output(formatted_deck_content_list, True)
+            self.__send_llm_requests_and_expand_output(formatted_deck_content_list, True, 'Whole deck')
             self.logger.info(f"  >> {'=' * 20} Full deck request done and documented {'=' * 20}")
 
         

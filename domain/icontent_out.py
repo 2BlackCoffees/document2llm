@@ -15,3 +15,8 @@ class IContentOut:
     def document(self, line: str) -> None:
         """
         """
+
+    @abstractmethod
+    def document_response(self, slide_info: str, content: str) -> None:
+        """
+        """

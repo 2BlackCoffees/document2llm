@@ -1,5 +1,6 @@
 from typing import Dict, List
 import json
+import re
 from pptx.enum.dml import MSO_COLOR_TYPE, MSO_FILL
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pprint import pprint, pformat
@@ -10,6 +11,8 @@ class LLMUtils:
         slide_text_external_requests: List = self.__read_json(slide_text_filename)
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
         deck_text_external_requests : List = self.__read_json(slide_deck_filename)
+        self.additional_request: str = "- Summarize in a table at most 3 finding types that you described and you consider the most important: \n"+\
+                                  "| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding description: Not a summary but a type of finding) | (Number of such findings) | (Weight of this finding. It is an integer rabging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n"
         self.additional_context: str = None
         self.slide_artistic_content_review_llm_requests = [
             {'request_name': 'Color artistic review', 
@@ -102,6 +105,11 @@ class LLMUtils:
             },
         ]
         self.deck_review_llm_requests.extend(deck_text_external_requests)
+    
+    def set_summary_findings(self) -> None:
+        for request_group in [self.deck_review_llm_requests, self.slide_text_review_llm_requests, self.slide_artistic_content_review_llm_requests]:
+            for request in request_group:
+                request['request'] += self.additional_request
 
     def set_additional_context(self, additional_context: str) -> None:
         self.additional_context = additional_context

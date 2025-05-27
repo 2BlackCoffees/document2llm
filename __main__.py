@@ -44,6 +44,8 @@ parser.add_argument('--debug', action="store_true", help='Set logging to debug')
 parser.add_argument('--force_top_p',type=float, help=f'Increases diversity from various probable outputs in results.')  # Add argument to increase diversity from various probable outputs in results
 parser.add_argument('--force_temperature', type=float, help=f'Higher temperature increases non sense and creativity while lower yields to focused and predictable results.')  # Add argument to increase non sense and creativity while lower yields to focused and predictable results
 parser.add_argument('--simulate_calls_only', action="store_true", help=f'Do not perform the calls to LLM: used for debugging purpose.')
+parser.add_argument('--create_summary_findings', action="store_true", help=f'Create a summary finding for all analysis.')
+
 args = parser.parse_args()
 
 logging_level = logging.INFO
@@ -91,4 +93,4 @@ if args.only_slides:
 ApplicationService(from_document, to_document, slides_to_skip, slides_to_keep, args.detailed_analysis, \
                    reviewer_name, args.simulate_calls_only, logging_level, llm_utils, \
                    selected_text_slide_requests, selected_artistic_slide_requests, \
-                   selected_deck_requests, model_name, context_path)
+                   selected_deck_requests, model_name, context_path, args.create_summary_findings)
