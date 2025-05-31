@@ -16,6 +16,7 @@ from_document: str = ""
 model_name: str = "llama3-70b"
 to_document: str = None
 context_path: str = None
+create_summary_findings: bool = False
 
 llm_utils = LLMUtils(["green", "purple"], 
                      os.getenv("PPT2LLM_REQUESTS_SLIDE_TEXT", default=""), 
@@ -45,6 +46,7 @@ parser.add_argument('--force_top_p',type=float, help=f'Increases diversity from 
 parser.add_argument('--force_temperature', type=float, help=f'Higher temperature increases non sense and creativity while lower yields to focused and predictable results.')  # Add argument to increase non sense and creativity while lower yields to focused and predictable results
 parser.add_argument('--simulate_calls_only', action="store_true", help=f'Do not perform the calls to LLM: used for debugging purpose.')
 parser.add_argument('--create_summary_findings', action="store_true", help=f'Create a summary finding for all analysis.')
+parser.add_argument('--format_output', action="store_true", help=f'Create a summary finding for all analysis.')
 
 args = parser.parse_args()
 
@@ -78,6 +80,8 @@ if args.context_path:
     context_path = args.context_path
 if args.reviewer_name:
     reviewer_name = args.reviewer_name
+if args.create_summary_findings:
+    create_summary_findings = args.create_summary_findings
 
 if args.skip_slides and args.only_slides:
     print("ERROR: Please either use option skip_slides or only_slides but not both!")
@@ -93,4 +97,4 @@ if args.only_slides:
 ApplicationService(from_document, to_document, slides_to_skip, slides_to_keep, args.detailed_analysis, \
                    reviewer_name, args.simulate_calls_only, logging_level, llm_utils, \
                    selected_text_slide_requests, selected_artistic_slide_requests, \
-                   selected_deck_requests, model_name, context_path, args.create_summary_findings)
+                   selected_deck_requests, model_name, context_path, create_summary_findings, args.format_output)

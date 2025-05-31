@@ -11,8 +11,7 @@ class LLMUtils:
         slide_text_external_requests: List = self.__read_json(slide_text_filename)
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
         deck_text_external_requests : List = self.__read_json(slide_deck_filename)
-        self.additional_request: str = "- Summarize in a table at most 3 finding types that you described and you consider the most important: \n"+\
-                                  "| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding description: Not a summary but a type of finding) | (Number of such findings) | (Weight of this finding. It is an integer rabging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n"
+
         self.additional_context: str = None
         self.slide_artistic_content_review_llm_requests = [
             {'request_name': 'Color artistic review', 
@@ -106,10 +105,20 @@ class LLMUtils:
         ]
         self.deck_review_llm_requests.extend(deck_text_external_requests)
     
-    def set_summary_findings(self) -> None:
+    def set_summary_findings_format_output(self, want_summary_finding: bool) -> None:
+        pre_additional_request: str = None
+        post_additional_request: str = None
+        if want_summary_finding:
+            pre_additional_request = '- For the below request, provide 5 to 7 detailed findings including suggestions.'
+            post_additional_request = "- Summarize in a table the 3 most important finding types that you found: \n\n"+\
+                                    "| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding Type: Not a summary but the type of finding) | (Number of such findings) | (Weight of this finding. It is an integer ranging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n"
+        else:
+            pre_additional_request = '- For the below request, provide all your findings including suggestions. '
+            post_additional_request = ''
+        pre_additional_request += 'Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ).\n\n'
         for request_group in [self.deck_review_llm_requests, self.slide_text_review_llm_requests, self.slide_artistic_content_review_llm_requests]:
             for request in request_group:
-                request['request'] += self.additional_request
+                request['request'] = pre_additional_request + request['request'] + post_additional_request
 
     def set_additional_context(self, additional_context: str) -> None:
         self.additional_context = additional_context

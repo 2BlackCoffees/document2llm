@@ -9,7 +9,7 @@ class ContentOut(IContentOut):
     
     toc: List = []
     findings: Dict = {}
-    TOTAL_FINDINGS: str = 'Weight of all findings'
+    TOTAL_FINDINGS: str = 'All findings'
     NAME_FINDING_KEY: str = 'name_finding'
     NUMBER_FINDING_KEY: str = 'number_finding'
     WEIGHT_FINDING_KEY: str = 'weight_finding'
@@ -66,8 +66,6 @@ class ContentOut(IContentOut):
         self.file_content.append(data)
         self.temporary_file.write(f"{data}\n")
         
-
-
     def document(self, line: str) -> str:
         md_text: str = '\n'.join([ re.sub(r'^#+', '#' * (self.last_title_level + 1), message) \
                                    for message in line.split('\\n')])
@@ -144,7 +142,7 @@ class ContentOut(IContentOut):
                     break
             slide_sorting_generation.append({
                 slide_info_str: slide_info, 
-                findings_str: reversed(sorted(findings, key = lambda finding: finding[self.WEIGHT_FINDING_KEY] * finding[self.WEIGHT_FINDING_KEY])), 
+                findings_str: reversed(sorted(findings, key = lambda finding: finding[self.NUMBER_FINDING_KEY] * finding[self.WEIGHT_FINDING_KEY])), 
                 self.TOTAL_FINDINGS: total_penalties
             })
 
@@ -162,13 +160,14 @@ class ContentOut(IContentOut):
             self.logger.debug(f'sorted_finding: Index: {index_sorted}: {pformat(sorted_finding)}, \nfindings_str: {pformat(findings_str)},\nslide_info_str: {slide_info_str} ')
             sorted_findings_str += f'### Slide {sorted_finding[slide_info_str]}\n'+\
                                f'Total slide penalties: **{sorted_finding[self.TOTAL_FINDINGS]}**\n\n'+\
-                               '| Finding type | Number findings | Weight |\n| --- | --- | --- |\n'
+                               '| Finding type | Number findings | Weight | Total penalties |\n| --- | --- | --- | --- |\n'
             for finding in sorted_finding[findings_str]:
                 self.logger.debug(f'finding: {pformat(finding)} ')
 
-                sorted_findings_str += f' | {finding[self.NAME_FINDING_KEY]}'+\
+                sorted_findings_str += f'| {finding[self.NAME_FINDING_KEY]}'+\
                                        f' | {finding[self.NUMBER_FINDING_KEY]}'+\
-                                       f' | {finding[self.WEIGHT_FINDING_KEY]} |\n'
+                                       f' | {finding[self.WEIGHT_FINDING_KEY]}'+\
+                                       f' | {finding[self.NUMBER_FINDING_KEY] * finding[self.WEIGHT_FINDING_KEY]} |\n'
         self.logger.debug(f'Generated findings: {sorted_findings_str}')
         return sorted_findings_str
                    
