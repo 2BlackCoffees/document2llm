@@ -13,7 +13,7 @@ csv_ = partial(str.split, sep=',')
 
 reviewer_name: str = "Elon Musk"
 from_document: str = ""
-model_name: str = "llama3-70b"
+model_name: str = "llama3.3-70b"
 to_document: str = None
 context_path: str = None
 create_summary_findings: bool = False
@@ -21,10 +21,13 @@ create_summary_findings: bool = False
 llm_utils = LLMUtils(["green", "purple"], 
                      os.getenv("PPT2LLM_REQUESTS_SLIDE_TEXT", default=""), 
                      os.getenv("PPT2LLM_REQUESTS_SLIDE_ARTISTIC", default=""), 
-                     os.getenv("PPT2LLM_REQUESTS_DECK_TEXT", default=""))
+                     os.getenv("PPT2LLM_REQUESTS_DECK_TEXT", default=""),
+                     os.getenv("PPT2LLM_REQUESTS_PRE_POST_REQUEST", default=""))
 selected_artistic_slide_requests: List = [ idx for idx in range(len(llm_utils.get_all_slide_artistic_review_llm_requests())) ]
 selected_text_slide_requests: List = [ idx for idx in range(len(llm_utils.get_all_slide_text_review_llm_requests())) ]
 selected_deck_requests: List = [ idx for idx in range(len(llm_utils.get_all_deck_review_llm_requests())) ]
+pre_post_requests: List = [ idx for idx in range(len(llm_utils.get_all_pre_post_llm_requests())) ]
+pre_post_request_id: int = 0
 only_slides = None
 
 parser.add_argument('--from_document', type=str, help='Specify the document to open')
@@ -45,8 +48,7 @@ parser.add_argument('--debug', action="store_true", help='Set logging to debug')
 parser.add_argument('--force_top_p',type=float, help=f'Increases diversity from various probable outputs in results.')  # Add argument to increase diversity from various probable outputs in results
 parser.add_argument('--force_temperature', type=float, help=f'Higher temperature increases non sense and creativity while lower yields to focused and predictable results.')  # Add argument to increase non sense and creativity while lower yields to focused and predictable results
 parser.add_argument('--simulate_calls_only', action="store_true", help=f'Do not perform the calls to LLM: used for debugging purpose.')
-parser.add_argument('--create_summary_findings', action="store_true", help=f'Create a summary finding for all analysis.')
-parser.add_argument('--format_output', action="store_true", help=f'Create a summary finding for all analysis.')
+parser.add_argument('--pre_post_requests', type=int, help=f'Specify pre post requests to format the output from the following list: [[ {llm_utils.get_all_pre_post_llm_requests_and_ids_str()} ]], default is {pre_post_request_id}')
 
 args = parser.parse_args()
 
@@ -55,11 +57,11 @@ logging_level = logging.INFO
 if args.debug:
     logging_level = logging.DEBUG
 if args.text_slide_requests:
-    selected_text_slide_requests = LLMUtils.get_list_parameters(args.slide_requests)
+    selected_text_slide_requests = LLMUtils.get_list_parameters(args.text_slide_requests)
 if args.no_text_slide_requests:
     selected_text_slide_requests = []
 if args.artistic_slide_requests:
-    selected_artistic_slide_requests = LLMUtils.get_list_parameters(args.slide_requests)
+    selected_artistic_slide_requests = LLMUtils.get_list_parameters(args.artistic_slide_requests)
 if args.no_artistic_slide_requests:
     selected_artistic_slide_requests = []
 if args.deck_requests:
@@ -80,8 +82,8 @@ if args.context_path:
     context_path = args.context_path
 if args.reviewer_name:
     reviewer_name = args.reviewer_name
-if args.create_summary_findings:
-    create_summary_findings = args.create_summary_findings
+if args.pre_post_requests:
+    pre_post_request_id = args.pre_post_requests
 
 if args.skip_slides and args.only_slides:
     print("ERROR: Please either use option skip_slides or only_slides but not both!")
@@ -97,4 +99,4 @@ if args.only_slides:
 ApplicationService(from_document, to_document, slides_to_skip, slides_to_keep, args.detailed_analysis, \
                    reviewer_name, args.simulate_calls_only, logging_level, llm_utils, \
                    selected_text_slide_requests, selected_artistic_slide_requests, \
-                   selected_deck_requests, model_name, context_path, create_summary_findings, args.format_output)
+                   selected_deck_requests, model_name, context_path, pre_post_request_id)

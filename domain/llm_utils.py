@@ -6,11 +6,13 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pprint import pprint, pformat
 from pathlib import Path
 class LLMUtils:
-    def __init__(self, color_palette: List, slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str):
+    def __init__(self, color_palette: List, \
+                 slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, additional_requests_filename: str):
         color_palette.append("transparent")
         slide_text_external_requests: List = self.__read_json(slide_text_filename)
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
         deck_text_external_requests : List = self.__read_json(slide_deck_filename)
+        additional_requests: List = self.__read_json(additional_requests_filename)
 
         self.additional_context: str = None
         self.slide_artistic_content_review_llm_requests = [
@@ -104,22 +106,51 @@ class LLMUtils:
             },
         ]
         self.deck_review_llm_requests.extend(deck_text_external_requests)
+
+        self.pre_post_additional_requests = [
+                        {
+                "request_name": "None", 
+                "pre_additional_request": "",
+                "post_additional_request": "",
+                "create_summary_findings": False
+
+            },
+            {
+                "request_name": "Summary finding", 
+                "pre_additional_request": "- For the below request, provide 5 to 7 detailed findings including suggestions.\n\n- Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ).",
+                "post_additional_request": "- Summarize in a table the 3 most important finding types that you found: \n\n| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding Type: Not a summary but the type of finding) | (Number of such findings) | (Weight of this finding. It is an integer ranging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n",
+                "create_summary_findings": True
+            },
+            {
+                "request_name": "Formatted output without summary", 
+                "pre_additional_request": "- For the below request, provide all your findings including suggestions.\n\n- Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ).",
+                "post_additional_request": "",
+                "create_summary_findings": False
+
+            }
+        ]
+        self.pre_post_additional_requests.extend(additional_requests)
     
-    def set_summary_findings_format_output(self, want_summary_finding: bool) -> None:
-        pre_additional_request: str = None
-        post_additional_request: str = None
-        if want_summary_finding:
-            pre_additional_request = '- For the below request, provide 5 to 7 detailed findings including suggestions.'
-            post_additional_request = "- Summarize in a table the 3 most important finding types that you found: \n\n"+\
-                                    "| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding Type: Not a summary but the type of finding) | (Number of such findings) | (Weight of this finding. It is an integer ranging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n"
-        else:
-            pre_additional_request = '- For the below request, provide all your findings including suggestions. '
-            post_additional_request = ''
-        pre_additional_request += 'Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ).\n\n'
-        for request_group in [self.deck_review_llm_requests, self.slide_text_review_llm_requests, self.slide_artistic_content_review_llm_requests]:
+    def set_pre_post_additional_request(self, pre_post_additional_request_id: int) -> None:
+        pre_additional_request: str = ""
+        post_additional_request: str = ""
+        create_summary_findings: bool = False
+
+        if pre_post_additional_request_id > 0 and pre_post_additional_request_id < len(self.pre_post_additional_requests):
+            pre_post_request: dict = self.pre_post_additional_requests[pre_post_additional_request_id]
+            pre_additional_request = pre_post_request["pre_additional_request"]
+            post_additional_request = pre_post_request["post_additional_request"]
+            create_summary_findings = pre_post_request["create_summary_findings"]
+
+        for request_group in [
+                                self.deck_review_llm_requests, 
+                                self.slide_text_review_llm_requests, 
+                                self.slide_artistic_content_review_llm_requests
+                             ]:
             for request in request_group:
                 request['request'] = pre_additional_request + request['request'] + post_additional_request
-
+        return create_summary_findings
+    
     def set_additional_context(self, additional_context: str) -> None:
         self.additional_context = additional_context
 
@@ -173,6 +204,10 @@ class LLMUtils:
     def get_all_deck_review_llm_requests(self, from_list: List = None):
         return self.__get_all_requests(self.deck_review_llm_requests, from_list)
     
+    def get_all_pre_post_llm_requests(self, from_list: List = None):
+        return self.__get_all_requests(self.pre_post_additional_requests, from_list)
+
+    
     def __get_all_slide_requests_and_ids(self, request_list: List, from_list: List = None):
         all_requests: List = []
         for idx, llm_request in enumerate(request_list):
@@ -185,6 +220,9 @@ class LLMUtils:
     
     def get_all_text_slide_requests_and_ids(self, from_list: List = None):
         return self.__get_all_slide_requests_and_ids(self.slide_text_review_llm_requests, from_list)
+    
+    def get_all_pre_post_llm_requests_and_ids(self, from_list: List = None):
+        return self.__get_all_slide_requests_and_ids(self.pre_post_additional_requests, from_list)
     
     def get_all_deck_requests_and_ids(self, from_list: List = None):
         return self.__get_all_slide_requests_and_ids(self.deck_review_llm_requests, from_list)
@@ -200,6 +238,11 @@ class LLMUtils:
     def get_all_deck_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
         all_requests = self.get_all_deck_requests_and_ids(from_list)
         return separator.join([f"{req['idx']}: {req['llm_request']}" for req in all_requests])
+
+    def get_all_pre_post_llm_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
+        all_requests = self.get_all_pre_post_llm_requests_and_ids(from_list)
+        return separator.join([f"{req['idx']}: {req['llm_request']}" for req in all_requests])
+    
     @staticmethod
     def get_list_parameters(parameters):
         parameter_list: List = []
@@ -280,3 +323,11 @@ class LLMUtils:
                             """
         instructions = instructions.replace('\\"', '"').replace('\\n', '\n')
         return instructions
+
+    @staticmethod
+    def is_paragraph(md_text: str, paragraph_start_min_word_length: str = 3, paragraph_start_min_word_numbers: str = 1) -> bool:
+        text:str = md_text.replace('**', '')
+        minwords: int = int(paragraph_start_min_word_numbers)  
+        regexp: str = f'(\\w{{{paragraph_start_min_word_length},}}\\b\\s+){{{minwords},}}\w{{{paragraph_start_min_word_length},}}\\b'
+        paragraph_found: bool = (re.search(regexp, text) is not None)
+        return paragraph_found

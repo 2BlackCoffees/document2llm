@@ -4,8 +4,8 @@ from pptx.enum.dml import MSO_COLOR_TYPE, MSO_FILL
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pprint import pprint, pformat
 from typing import Tuple
-class PPTReader:
 
+class PPTReader:
     @staticmethod
     def is_paragraph(md_text: str, paragraph_start_min_word_length: str = 3, paragraph_start_min_word_numbers: str = 1) -> bool:
         text:str = md_text.replace('**', '')

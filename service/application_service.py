@@ -18,15 +18,13 @@ class ApplicationService:
     def __init__(self, document_path: str, to_document: str, slides_to_skip: List, slides_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
                  simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
-                 selected_deck_requests: List, model_name: str, context_path: str, create_summary_findings: bool, 
-                 format_output: bool, consider_bullets_for_crlf: bool= True):
+                 selected_deck_requests: List, model_name: str, context_path: str, pre_post_request_id: int, consider_bullets_for_crlf: bool= True):
 
         program_name = os.path.basename(sys.argv[0])
         logger = logging.getLogger(f'loggername_{program_name}')
         logging.basicConfig(encoding='utf-8', level=logging_level)
 
-        if create_summary_findings or format_output:
-            llm_utils.set_summary_findings_format_output(create_summary_findings)
+        create_summary_findings: bool = llm_utils.set_pre_post_additional_request(pre_post_request_id)
         path = Path(document_path)
         if not path.is_file():
             logger.error(f'The file {document_path} does not seem to exist ({os.getcwd()}).')
