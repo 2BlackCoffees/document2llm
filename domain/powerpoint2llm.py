@@ -1,21 +1,21 @@
 import re
 import json
-import traceback
 from pprint import pformat
 from typing import List, Dict, Tuple
 from logging import Logger
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
-from domain.ichecker import IChecker, DeckChecker, ArtisticSlideChecker, TextSlideChecker
+from domain.ichecker import DeckChecker, ArtisticSlideChecker, TextSlideChecker
 from domain.allm_access import AbstractLLMAccess
 from domain.llm_utils import LLMUtils
 from domain.ppt_reader import PPTReader
 from domain.icontent_out import IContentOut
+from domain.adocument2llm import ADocumentToLLM
 from pprint import pprint
 
-class PPT2GPT: 
+class PowerPointToLLM(ADocumentToLLM): 
     TITLE_PARAMS: str = 'title_document'
-    CHECKER_PARAMS: str = 'checker_params'
+    CHECKER_INSTANCE: str = 'checker_params'
     LLM_REQUEST_PARAMS: str = 'llm_request_params'
     DONE_TEXT: str = 'done_text'
 
@@ -23,8 +23,7 @@ class PPT2GPT:
                  logger: Logger, content_out: IContentOut, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
                  selected_deck_requests: List, llm_access: AbstractLLMAccess, consider_bullets_for_crlf: bool= True):
-        self.content_out = content_out
-        self.logger = logger
+        super().__init__(logger, content_out, llm_access)
         self.document =  Presentation(document_path)
         self.llm_utils = llm_utils
         self.document_path = document_path
@@ -34,14 +33,9 @@ class PPT2GPT:
         self.selected_text_slide_requests = selected_text_slide_requests
         self.selected_artistic_slide_requests = selected_artistic_slide_requests
         self.selected_deck_requests = selected_deck_requests
-        self.llm_access = llm_access
         self.want_selected_text_slide_requests: bool = len(self.selected_text_slide_requests) > 0
         self.want_selected_artistic_slide_requests: bool = len(self.selected_artistic_slide_requests) > 0
-        try:
-            self.__ppt2gpt()
-        except Exception as err:                    
-            self.logger.warning(f"Caught exception {err=}\n {type(err)=}\n {traceback.print_exc()}\n Leaving application.")
-        self.content_out.flush_and_close()
+        #self.process()
 
     def __get_title_details(self, shape: Dict):
         self.logger.debug(f"Shape for title: {pformat(shape)}")
@@ -79,25 +73,12 @@ class PPT2GPT:
                 self.logger.debug(pformat(sorted_shapes))
             return slide_shapes_content, title, slide_info, reduced_slide_text
     
-    def __send_llm_requests_and_expand_output(self, content_to_check: List, print_title: bool, slide_info: str) -> None:
-            
-            result = self.llm_access.check(content_to_check)
-
-            for response in result:
-                if print_title: 
-                    self.content_out.add_title(2, f"{response['request_name']} (temperature: {response['temperature']}, top_p: {response['top_p']})")
-                else:
-                    self.content_out.document(f"**{response['request_name']}**")
-                self.content_out.document_response(slide_info, response['response'])
 
     def __print_slide_keep_skip_info(self, keep_skip_info: str) -> None:
         self.logger.info(keep_skip_info)
-        if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
-            self.content_out.add_title(1, keep_skip_info)
-        else:
-            self.content_out.document(f"**{keep_skip_info}**")
+        self.content_out.document(f"**{keep_skip_info}**")
 
-    def __ppt_to_data_structure(self) -> List:
+    def _document_to_data_structure(self) -> List:
 
         data_structure: List = []
         deck_content: List = []
@@ -195,22 +176,33 @@ class PPT2GPT:
 
             slide_info: str = f'{slide_number} {title}'
             if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
-                self.content_out.add_title(1, f"Analyzing slide {slide_info}")
+                data_structure.append(
+                    {
+                        self.TITLE_PARAMS: (1, f"Analyzing slide {slide_info}"),
+                        self.CHECKER_INSTANCE: None,
+                        self.LLM_REQUEST_PARAMS: None,
+                        self.DONE_TEXT: None
+                    }
+                )
 
                 if self.want_selected_text_slide_requests:
                     data_structure.append(
-                        {self.TITLE_PARAMS: (2, f"Check of text content for slide {slide_number}"),
-                         self.CHECKER_PARAMS: (self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
-                         self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), False, slide_info),
-                         self.DONE_TEXT: f"  >> {'=' * 20} Text slide request {slide_number} {title} done and documented {'=' * 20}"}
+                        {
+                            self.TITLE_PARAMS: (2, f"Check of text content for slide {slide_number}"),
+                            self.CHECKER_INSTANCE: TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
+                            self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), False, slide_info),
+                            self.DONE_TEXT: f"Text slide request {slide_number} {title}"
+                        }
                     )
 
                 if self.want_selected_artistic_slide_requests:
                     data_structure.append(
-                        {self.TITLE_PARAMS: (2, f"Check of artistic content for slide {slide_number}"),
-                         self.CHECKER_PARAMS: (self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
-                         self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), False, slide_info),
-                         self.DONE_TEXT: f"  >> {'=' * 20} Artistic slide request {slide_number} {title} done and documented {'=' * 20}"}
+                        {
+                            self.TITLE_PARAMS: (2, f"Check of artistic content for slide {slide_number}"),
+                            self.CHECKER_INSTANCE: ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
+                            self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), False, slide_info),
+                            self.DONE_TEXT: f"Artistic slide request {slide_number} {title}"
+                        }
                     )
                    
             deck_content.append(slide_content)
@@ -219,21 +211,27 @@ class PPT2GPT:
             formatted_deck_content_list: List = [ f'Slide {slide_number + 1}, {slide_content["title"]}:\n{json.dumps(slide_content["reduced_slide_text"])}' \
                                                   for slide_number, slide_content in enumerate(deck_content) ]
             data_structure.append(
-                {self.TITLE_PARAMS: (1, f"Check of text content and flow for the whole deck"),
-                 self.CHECKER_PARAMS: (self.llm_utils, self.selected_deck_requests, f' (Deck)', f' (Deck)'),
-                 self.LLM_REQUEST_PARAMS: (formatted_deck_content_list, True, 'Whole deck'),
-                 self.DONE_TEXT: f"  >> {'=' * 20} Full deck request done and documented {'=' * 20}"}
+                {
+                    self.TITLE_PARAMS: (1, f"Check of text content and flow for the whole deck"),
+                    self.CHECKER_INSTANCE: DeckChecker(self.llm_utils, self.selected_deck_requests, f' (Deck)', f' (Deck)'),
+                    self.LLM_REQUEST_PARAMS: (formatted_deck_content_list, True, 'Whole deck'),
+                    self.DONE_TEXT: f"Full deck request"
+                }
             )
         return data_structure
-    def __ppt2gpt(self):
-        for data in self.__ppt_to_data_structure():
-            _, title = data[self.TITLE_PARAMS]
-            self.logger.info(f"{'=' * 20} Processing {title} {'=' * 20}  >> ")
-            self.content_out.add_title(*data[self.TITLE_PARAMS])
-            checker: IChecker = DeckChecker(*data[self.CHECKER_PARAMS])
-            self.llm_access.set_checker(checker)
-            self.__send_llm_requests_and_expand_output(*data[self.LLM_REQUEST_PARAMS])
-            self.logger.info(data[self.DONE_TEXT])
+
+    def _get_title_rank_title_str_as_tuple(self, data: Dict) -> Tuple:
+        return data[self.TITLE_PARAMS]
+
+    def _get_checker_instance(self, data: Dict) -> any:
+        return data[self.CHECKER_INSTANCE]
+
+    def _get_llm_parameters_requests_as_tuple(self, data: any) -> Tuple:
+        return data[self.LLM_REQUEST_PARAMS]
+    
+    def _get_done_text(self, data: any) -> str:
+        return data[self.DONE_TEXT]
+
 
 
         

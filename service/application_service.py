@@ -5,14 +5,14 @@ from pathlib import Path
 import logging
 from typing import List
 from domain.llm_utils import LLMUtils
-from domain.icontent_out import IContentOut
 from domain.allm_access import AbstractLLMAccess
+from domain.powerpoint2llm import PowerPointToLLM
+from domain.adocument2llm import ADocumentToLLM
 from infrastructure.llm_access import LLMAccess
 from infrastructure.llm_access_detailed import LLMAccessDetailed
 from infrastructure.llm_access_simulate import LLMAccessSimulateCalls
 from infrastructure.llm_access_detailed_simulate import LLMAccessDetailedSimulateCalls
 from infrastructure.content_out import ContentOut
-from domain.ppt2gpt import PPT2GPT
 
 class ApplicationService:
     def __init__(self, document_path: str, to_document: str, slides_to_skip: List, slides_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
@@ -74,6 +74,9 @@ class ApplicationService:
         else:
             llm_access = LLMAccess(logger, reviewer_name, model_name, llm_utils) if not simulate_calls_only else LLMAccessSimulateCalls(logger, reviewer_name, model_name, llm_utils)
 
-        PPT2GPT(document_path, slides_to_skip, slides_to_keep, logger, content_out, llm_utils, selected_text_slide_requests, \
+        document_to_llm: ADocumentToLLM = PowerPointToLLM(document_path, slides_to_skip, slides_to_keep, logger, content_out, llm_utils, selected_text_slide_requests, \
                 selected_artistic_slide_requests, selected_deck_requests, llm_access, consider_bullets_for_crlf)
+        document_to_llm.process()
+        logger.info(f"Analysis stored in {to_document}")
+        
    

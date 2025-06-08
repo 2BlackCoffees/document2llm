@@ -13,6 +13,7 @@ class ContentOut(IContentOut):
     NAME_FINDING_KEY: str = 'name_finding'
     NUMBER_FINDING_KEY: str = 'number_finding'
     WEIGHT_FINDING_KEY: str = 'weight_finding'
+    status: str = "Not initialized"
     
     def __init__(self, file_title: str, file_description: str, log_file_name: str, logger: logging.Logger, create_summary_findings: bool, max_nb_important_findings: int = 10):  
         self.log_file_name = log_file_name
