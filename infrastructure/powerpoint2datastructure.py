@@ -1,6 +1,6 @@
 import re
 import json
-from pprint import pformat
+from pprint import pformat, pprint
 from typing import List, Dict, Tuple
 from logging import Logger
 from pptx import Presentation
@@ -8,12 +8,11 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from domain.ichecker import DeckChecker, ArtisticSlideChecker, TextSlideChecker
 from domain.allm_access import AbstractLLMAccess
 from domain.llm_utils import LLMUtils
-from domain.ppt_reader import PPTReader
 from domain.icontent_out import IContentOut
-from domain.adocument2llm import ADocumentToLLM
-from pprint import pprint
+from domain.adocument2datastructure import ADocumentToDatastructure
+from infrastructure.ppt_reader import PPTReader
 
-class PowerPointToLLM(ADocumentToLLM): 
+class PowerPointToDataStructure(ADocumentToDatastructure): 
     TITLE_PARAMS: str = 'title_document'
     CHECKER_INSTANCE: str = 'checker_params'
     LLM_REQUEST_PARAMS: str = 'llm_request_params'
@@ -35,7 +34,6 @@ class PowerPointToLLM(ADocumentToLLM):
         self.selected_deck_requests = selected_deck_requests
         self.want_selected_text_slide_requests: bool = len(self.selected_text_slide_requests) > 0
         self.want_selected_artistic_slide_requests: bool = len(self.selected_artistic_slide_requests) > 0
-        #self.process()
 
     def __get_title_details(self, shape: Dict):
         self.logger.debug(f"Shape for title: {pformat(shape)}")

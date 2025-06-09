@@ -6,19 +6,26 @@ import logging
 from typing import List
 from domain.llm_utils import LLMUtils
 from domain.allm_access import AbstractLLMAccess
-from domain.powerpoint2llm import PowerPointToLLM
-from domain.adocument2llm import ADocumentToLLM
+from domain.adocument2datastructure import ADocumentToDatastructure
+from infrastructure.powerpoint2datastructure import PowerPointToDataStructure
+from infrastructure.word2datastructure import WordToDatastructure
 from infrastructure.llm_access import LLMAccess
 from infrastructure.llm_access_detailed import LLMAccessDetailed
 from infrastructure.llm_access_simulate import LLMAccessSimulateCalls
 from infrastructure.llm_access_detailed_simulate import LLMAccessDetailedSimulateCalls
 from infrastructure.content_out import ContentOut
+from enum import Enum
+
+class DocumentType(Enum):
+    PPTX = 1
+    DOCX = 2
 
 class ApplicationService:
-    def __init__(self, document_path: str, to_document: str, slides_to_skip: List, slides_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
-                 simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, \
+    def __init__(self, document_path: str, to_document: str, elements_to_skip: List, elements_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
+                 simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, context_length: int,\
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
-                 selected_deck_requests: List, model_name: str, context_path: str, pre_post_request_id: int, consider_bullets_for_crlf: bool= True):
+                 selected_deck_requests: List, selected_paragraphs_requests: List, split_request_per_paragraph_deepness: int,
+                 model_name: str, context_path: str, pre_post_request_id: int, document_type: DocumentType, consider_bullets_for_crlf: bool= True):
 
         program_name = os.path.basename(sys.argv[0])
         logger = logging.getLogger(f'loggername_{program_name}')
@@ -42,18 +49,6 @@ class ApplicationService:
                 logger.warning(f"File {context_path} could not be read.")
                 
         information_user: List = []
-        if slides_to_skip is not None and len(slides_to_skip) > 0:
-            information_user.append(f"Slides to be skipped are: {slides_to_skip}")
-        if slides_to_keep is not None and len(slides_to_keep) > 0:
-            information_user.append(f"Slides to be kept are: {slides_to_keep}")
-        separator: str = " \n  * "
-        if len(selected_text_slide_requests) > 0:
-            information_user.append(f"LLM text Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_text_requests_and_ids_str(selected_text_slide_requests, separator)}")
-        if len(selected_artistic_slide_requests) > 0:
-            information_user.append(f"LLM artistic Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_artistic_requests_and_ids_str(selected_artistic_slide_requests, separator)}")
-        if len(selected_deck_requests) > 0:
-            information_user.append(f"LLM test Requests to be applied on the whole deck are:{separator}{llm_utils.get_all_deck_requests_and_ids_str(selected_deck_requests, separator)}")
-
         if to_document is None:
             to_document = re.sub(r'\.[^\.]*$', '', str(document_path))
             if detailed_analysis:
@@ -74,8 +69,26 @@ class ApplicationService:
         else:
             llm_access = LLMAccess(logger, reviewer_name, model_name, llm_utils) if not simulate_calls_only else LLMAccessSimulateCalls(logger, reviewer_name, model_name, llm_utils)
 
-        document_to_llm: ADocumentToLLM = PowerPointToLLM(document_path, slides_to_skip, slides_to_keep, logger, content_out, llm_utils, selected_text_slide_requests, \
+        document_to_llm: ADocumentToDatastructure = None
+        if document_type == DocumentType.PPTX:
+            if elements_to_skip is not None and len(elements_to_skip) > 0:
+                information_user.append(f"Slides to be skipped are: {elements_to_skip}")
+            if elements_to_keep is not None and len(elements_to_keep) > 0:
+                information_user.append(f"Slides to be kept are: {elements_to_keep}")
+            separator: str = " \n  * "
+            if len(selected_text_slide_requests) > 0:
+                information_user.append(f"LLM text Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_text_requests_and_ids_str(selected_text_slide_requests, separator)}")
+            if len(selected_artistic_slide_requests) > 0:
+                information_user.append(f"LLM artistic Requests to be applied on each slide are:{separator}{llm_utils.get_all_slide_artistic_requests_and_ids_str(selected_artistic_slide_requests, separator)}")
+            if len(selected_deck_requests) > 0:
+                information_user.append(f"LLM test Requests to be applied on the whole deck are:{separator}{llm_utils.get_all_deck_requests_and_ids_str(selected_deck_requests, separator)}")
+            document_to_llm = PowerPointToDataStructure(document_path, elements_to_skip, elements_to_keep, logger, content_out, llm_utils, selected_text_slide_requests, \
                 selected_artistic_slide_requests, selected_deck_requests, llm_access, consider_bullets_for_crlf)
+        elif document_type == DocumentType.DOCX:
+            document_to_llm = WordToDatastructure(document_path, elements_to_skip, elements_to_keep,\
+                 logger, content_out, llm_utils, \
+                 selected_paragraphs_requests, split_request_per_paragraph_deepness, llm_access,  context_length)
+
         document_to_llm.process()
         logger.info(f"Analysis stored in {to_document}")
         

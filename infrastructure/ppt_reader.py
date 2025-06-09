@@ -36,7 +36,8 @@ class PPTReader:
             else:
                 text_list.append(PPTReader.__get_md_formatted_string(cur_shape, 'text'))
         return text_list
-    
+
+    @staticmethod  
     def _get_shape_graphical_infos(shape: Dict, shape_details: Dict, slide_size: Tuple) -> Dict:
 
         shape_width, shape_height = slide_size
@@ -101,6 +102,7 @@ class PPTReader:
 
         return shape_details
 
+    @staticmethod  
     def _get_shape_infos(slide_number: int, shape: Dict, need_graphical: bool, slide_size: Tuple) -> Dict:
         shape_details: Dict =  {
             "shape": {
@@ -115,6 +117,7 @@ class PPTReader:
             
         return shape_details
 
+    @staticmethod  
     def __encapsulate_shape(shape: Dict, text: str, json_shape: Dict, slide_size: Tuple) -> Dict:
         new_json = json_shape.copy()
         if hasattr(shape, 'shape_type'):
@@ -132,6 +135,8 @@ class PPTReader:
             'json': new_json,
             'raw_text': str(new_json["shape"]["text"]) if text is None else text
         }
+
+    @staticmethod  
     def add_text_box_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
         json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         json_shape["shape"]["type"] = str(MSO_SHAPE_TYPE.TEXT_BOX)
@@ -140,6 +145,7 @@ class PPTReader:
         if PPTReader.is_paragraph(final_json['raw_text']):
             shape_descriptions.append(final_json)
     
+    @staticmethod  
     def add_group_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
         json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         text_list: list = []
@@ -148,6 +154,7 @@ class PPTReader:
         if PPTReader.is_paragraph(final_json['raw_text']):
             shape_descriptions.append(final_json)
     
+    @staticmethod  
     def add_table_info(slide_number: int, shape: Dict, table: Dict, table_str: str, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
         json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         json_shape["shape"]["table_size"] = {
@@ -159,6 +166,7 @@ class PPTReader:
 
         shape_descriptions.append(PPTReader.__encapsulate_shape(shape, table_str, json_shape, slide_size))
 
+    @staticmethod  
     def add_shape_type_info(slide_number: int, shape: Dict, need_graphical: bool, shape_descriptions: List, slide_size: Tuple) -> None:
         json_shape: Dict = PPTReader._get_shape_infos(slide_number, shape, need_graphical, slide_size)
         json_shape["shape"]["type"] = "shape_type"
@@ -168,6 +176,7 @@ class PPTReader:
 
         shape_descriptions.append(PPTReader.__encapsulate_shape(shape, text, json_shape, slide_size))
 
+    @staticmethod  
     def add_created_title(slide_number: int, title_value: str, need_graphical: bool, shape_descriptions: List, slide_size) -> None:
         shape: Dict = {
             'top': 0,
@@ -183,6 +192,7 @@ class PPTReader:
         json_shape["shape"]["text"] = title_value
         shape_descriptions.append(PPTReader.__encapsulate_shape(shape, title_value, json_shape, slide_size))
 
+    @staticmethod  
     def get_sorted_shapes_by_pos_y(shapes: List) -> List:
         return sorted(shapes, key = lambda shape_dict: shape_dict['y'])
 

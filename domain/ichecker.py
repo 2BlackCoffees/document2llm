@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List
 from domain.llm_utils import LLMUtils
+from pprint import pprint
+
 class IChecker(ABC):
     def __init__(self, llm_utils: LLMUtils, from_list: List, separator_information: str, error_information: str):
         self.llm_utils = llm_utils
@@ -31,4 +33,8 @@ class ArtisticSlideChecker(IChecker):
 class TextSlideChecker(IChecker):
     def get_all_requests(self) -> List:
         return self.llm_utils.get_all_slide_text_review_llm_requests(self.from_list)
+
+class WordChecker(IChecker):
+    def get_all_requests(self) -> List:
+        return self.llm_utils.get_all_word_review_llm_requests(self.from_list)
 

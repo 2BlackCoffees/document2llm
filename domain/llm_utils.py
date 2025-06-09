@@ -7,11 +7,12 @@ from pprint import pprint, pformat
 from pathlib import Path
 class LLMUtils:
     def __init__(self, color_palette: List, \
-                 slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, additional_requests_filename: str):
+                 slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, word_requests_filename: str, additional_requests_filename: str):
         color_palette.append("transparent")
         slide_text_external_requests: List = self.__read_json(slide_text_filename)
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
         deck_text_external_requests : List = self.__read_json(slide_deck_filename)
+        word_review_external_requests: List = self.__read_json(word_requests_filename)
         additional_requests: List = self.__read_json(additional_requests_filename)
 
         self.additional_context: str = None
@@ -56,6 +57,55 @@ class LLMUtils:
             }
         ]
         self.slide_text_review_llm_requests.extend(slide_text_external_requests)
+
+        self.word_review_llm_requests = [
+            {'request_name': 'Spell check and Clarity checks', 
+                'request': 'Perform a detailed spell check to ensure no spelling errors exist. '\
+                           'Verify that all terms used are clear and concise for any reader.'\
+                           'Identify any sections or paragraphs that may be confusing or unclear, suggest improvements.',
+                'temperature': 0.3, 'top_p': 0.2 
+            },
+            {'request_name': 'Text Readability checks',
+                'request': "Read the text out loud and suggest simplification if the text is hard to read or comprehend.",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
+            {'request_name': 'Extract technical details',
+                'request': "* Extract all technical details of this document.\n \
+                            * Provide technical details as a list of bullet points.\n\
+                            * Describe the complexity of the technical expectation.\n\
+                            * Prepare all necessary questions to ensure the technical scope can be clarified.",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
+            {'request_name': 'Propose a team',
+                'request': "* Considering technical expectations, technical details, suggest a steady state team allowing to provide the best cost possible ensuring quality. \n\
+                            * Consider as much offshore as possible keeping in mind onshore for communication and nearshore for data access restriction like GDPR. \n\
+                            * Explain the advantages and drawbacks of the team you set up. \n\
+                            * Describe how transition will happen, we expect , OnBoarding, KT, Shadow, Reverse Shadow and Steady state. \n\
+                            * Describe how ramp up will happen. \n\
+                            * Provide the team in terms or ressource loading sheet following the below template ensuring the columns related to the numbers are equals to the number of months expected for the project.\
+                            * Ensure the table provided will depict the ramp up and all one column per month as expected by the project: \n\
+                                | Location | Role | High level skills | Grade | (First month: Example 2025-01) | (Second month: Example 2025-02) | (Add a column for all aditional months needed) |\n\
+                                | --- | --- | --- | --- | --- | --- | --- |\n\
+                                | (India for offshore, Nearshore country or OnShore country for very critical roles) | (Role name: Project manager, Transition manager, Solutions architect, DevOps, ...) | (Example: Project Management, Technical or management details required) | (Between A and H, Fresher are grade A, grade C is senior, Grade D tech lead, Garde E is senior tech lead or architect, F is Senior architect, G is solutions architect or program manager, H is senior grade G) | (Example 20%) | (Example 100%) | (Example 50%) |\n\
+                                    \
+                            * Provide a job description for each of the roles you have proposed detailing all technical and management skills required.",
+                'temperature': 0.5, 'top_p': 0.5 
+            },
+            {'request_name': 'Extract commercial details',
+                'request': "* Extract all commercial details of this document. \n\
+                            * Provide commercial details as a list of bullet points. \n\
+                            * Describe the complexity of the commercial expectations.\n\
+                            * Prepare all necessary questions to ensure the commercial scope can be clarified.",
+                'temperature': 0.3, 'top_p': 0.2 
+            },
+            {'request_name': 'Text take away checks', 
+                'request': "Ensure all paragraphs hava a clear, memorable takeaway."\
+                           "Please provide concrete and valuable suggestion improvements."\
+                           "Ensure a takeaway exists for each paragraph and suggest improvement or propose one new.",
+                'temperature': 0.3, 'top_p': 0.2 
+            }
+        ]
+        self.word_review_llm_requests.extend(word_review_external_requests)
 
         self.deck_review_llm_requests = [
             {'request_name': 'Flow check', 
@@ -169,6 +219,7 @@ class LLMUtils:
         @brief Sets the temperature for all LLM requests.
         @param new_temperature The new temperature value.
         """
+        self.set_default_temperature_top_p_requests(self.word_review_llm_requests, new_temperature, None)
         self.set_default_temperature_top_p_requests(self.slide_artistic_content_review_llm_requests, new_temperature, None)
         self.set_default_temperature_top_p_requests(self.slide_text_review_llm_requests, new_temperature, None)
         self.set_default_temperature_top_p_requests(self.deck_review_llm_requests, new_temperature, None)
@@ -178,6 +229,7 @@ class LLMUtils:
         @brief Sets the top_p value for all LLM requests.
         @param new_top_p The new top_p value.
         """
+        self.set_default_temperature_top_p_requests(self.word_review_llm_requests, None, new_top_p)
         self.set_default_temperature_top_p_requests(self.slide_artistic_content_review_llm_requests, None, new_top_p)
         self.set_default_temperature_top_p_requests(self.slide_text_review_llm_requests, None, new_top_p)
         self.set_default_temperature_top_p_requests(self.deck_review_llm_requests, None, new_top_p)
@@ -201,6 +253,9 @@ class LLMUtils:
     def get_all_slide_text_review_llm_requests(self, from_list: List = None):
         return self.__get_all_requests(self.slide_text_review_llm_requests, from_list)
     
+    def get_all_word_review_llm_requests(self, from_list: List = None):
+        return self.__get_all_requests(self.word_review_llm_requests, from_list)
+
     def get_all_deck_review_llm_requests(self, from_list: List = None):
         return self.__get_all_requests(self.deck_review_llm_requests, from_list)
     
@@ -208,7 +263,7 @@ class LLMUtils:
         return self.__get_all_requests(self.pre_post_additional_requests, from_list)
 
     
-    def __get_all_slide_requests_and_ids(self, request_list: List, from_list: List = None):
+    def __get_all_requests_and_ids(self, request_list: List, from_list: List = None):
         all_requests: List = []
         for idx, llm_request in enumerate(request_list):
             if from_list is None or idx in from_list:
@@ -216,23 +271,33 @@ class LLMUtils:
         return all_requests    
     
     def get_all_artistic_slide_requests_and_ids(self, from_list: List = None):
-        return self.__get_all_slide_requests_and_ids(self.slide_artistic_content_review_llm_requests, from_list)
+        return self.__get_all_requests_and_ids(self.slide_artistic_content_review_llm_requests, from_list)
+    
+    def get_all_word_review_llm_requests_and_ids(self, from_list: List = None):
+        return self.__get_all_requests_and_ids(self.word_review_llm_requests, from_list)
     
     def get_all_text_slide_requests_and_ids(self, from_list: List = None):
-        return self.__get_all_slide_requests_and_ids(self.slide_text_review_llm_requests, from_list)
+        return self.__get_all_requests_and_ids(self.slide_text_review_llm_requests, from_list)
     
     def get_all_pre_post_llm_requests_and_ids(self, from_list: List = None):
-        return self.__get_all_slide_requests_and_ids(self.pre_post_additional_requests, from_list)
+        return self.__get_all_requests_and_ids(self.pre_post_additional_requests, from_list)
     
     def get_all_deck_requests_and_ids(self, from_list: List = None):
-        return self.__get_all_slide_requests_and_ids(self.deck_review_llm_requests, from_list)
+        return self.__get_all_requests_and_ids(self.deck_review_llm_requests, from_list)
+    
+    def get_all_deck_requests_and_ids(self, from_list: List = None):
+        return self.__get_all_requests_and_ids(self.deck_review_llm_requests, from_list)
+    
+    def get_all_slide_text_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
+        all_requests = self.get_all_text_slide_requests_and_ids(from_list)
+        return separator.join([f"{req['idx']}: {req['llm_request']}" for req in all_requests])
     
     def get_all_slide_artistic_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
         all_requests = self.get_all_artistic_slide_requests_and_ids(from_list)
         return separator.join([f"{req['idx']}: {req['llm_request']}" for req in all_requests])
     
-    def get_all_slide_text_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
-        all_requests = self.get_all_text_slide_requests_and_ids(from_list)
+    def get_all_word_review_llm_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
+        all_requests = self.get_all_word_review_llm_requests_and_ids(from_list)
         return separator.join([f"{req['idx']}: {req['llm_request']}" for req in all_requests])
     
     def get_all_deck_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):

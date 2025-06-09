@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from domain.llm_utils import LLMUtils
 from domain.ichecker import IChecker
 from logging import Logger
 from domain.icontent_out import IContentOut
 from domain.allm_access import AbstractLLMAccess
 import traceback
-class ADocumentToLLM(ABC):
+class ADocumentToDatastructure(ABC):
     content_out: IContentOut = None
     logger: Logger = None
     llm_access: AbstractLLMAccess = None
@@ -49,13 +48,13 @@ class ADocumentToLLM(ABC):
                 if print_title: 
                     self.content_out.add_title(2, f"{response['request_name']} (temperature: {response['temperature']}, top_p: {response['top_p']})")
                 else:
-                    self.content_out.document(f"**{response['request_name']}**")
+                    self.content_out.document(f"**{response['request_name']}** (temperature: {response['temperature']}, top_p: {response['top_p']})")
                 self.content_out.document_response(slide_info, response['response'])
 
     def __core_process(self) -> None:
         data_structure: List = self._document_to_data_structure()
         for index, data in enumerate(data_structure):
-            self.logger.info(f"Executing request : {index + 1} / {len(data_structure)}")
+            self.logger.debug(f"Executing request : {index + 1} / {len(data_structure)}")
             
             title_rank, title_str = self._get_title_rank_title_str_as_tuple(data)
             self.logger.info(f"{' ' * (title_rank * 2)}{'=' * 20} Processing {title_str} >>> {'=' * 20}  >> ")
