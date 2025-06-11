@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 import re
 from pprint import pprint, pformat
 from logging import Logger
@@ -9,13 +12,9 @@ from docx.oxml.text.paragraph import CT_P
 from docx.oxml.table import CT_Tbl
 from docx.table import _Cell, Table
 from docx.text.paragraph import Paragraph
-from docx.enum.style import WD_STYLE_TYPE
 import xml.etree.ElementTree as ET
-from PIL import Image
-import json
-#import pytesseract
-import io
-import sys
+from xml.etree import ElementTree
+from io import StringIO
 from domain.ichecker import WordChecker
 from domain.allm_access import AbstractLLMAccess
 from domain.llm_utils import LLMUtils
@@ -27,21 +26,32 @@ class WordToDatastructure(ADocumentToDatastructure):
     CHECKER_INSTANCE: str = 'checker_params'
     LLM_REQUEST_PARAMS: str = 'llm_request_params'
     DONE_TEXT: str = 'done_text'
+    INIT_PARAGRAPH: str = '0.0.0.0'
+
 
     def __init__(self, document_path: str, paragraphs_to_skip: List, paragraphs_to_keep: List,\
                  logger: Logger, content_out: IContentOut, llm_utils: LLMUtils, \
                  selected_paragraphs_requests: List, split_request_per_paragraph_deepness: int, llm_access: AbstractLLMAccess, 
-                 context_length_source_document: int):
+                 context_length_source_document: int, enable_ocr: bool):
         super().__init__(logger, content_out, llm_access)
         self.document =  Document(document_path)
         self.llm_utils = llm_utils
         self.document_path = document_path
-        self.paragraphs_to_skip = paragraphs_to_skip
-        self.paragraphs_to_keep = paragraphs_to_keep
+        self.paragraphs_to_skip = self.__paragraph_number_string_list(paragraphs_to_skip)
+        self.paragraphs_to_keep = self.__paragraph_number_string_list(paragraphs_to_keep)
         self.selected_paragraphs_requests = selected_paragraphs_requests
         self.context_length_source_document = context_length_source_document
         self.split_request_per_paragraph_deepness = split_request_per_paragraph_deepness
-#
+        self.enable_ocr = enable_ocr
+        if self.enable_ocr: 
+            import easyocr
+
+
+    def __paragraph_number_string_list(self, paragraph_number_list: List) -> List:
+        if paragraph_number_list is None: 
+            return None
+        return [ paragraph_number + '.' if re.match(r'^\d+$', paragraph_number) else paragraph_number for paragraph_number in paragraph_number_list ]
+    
     def __get_heading_deepness(self, heading_style) -> int:
         regexp = re.compile(r'^heading\s+(?P<heading_deepness>\d+)')
         m = regexp.match(heading_style)
@@ -49,9 +59,10 @@ class WordToDatastructure(ADocumentToDatastructure):
             return int(m.group('heading_deepness')) - 1
         return -1
 
-    def __get_tokens(self, string: str) -> int:
-        # Currently using a very approximate approach, a tokenizer of OpenAI or HuggingFace should be used instead
-        return len(string.split()) / 4
+    def __get_number_tokens(self, string: str) -> int:
+        # Currently using a very approximate approach where we consider 2 to 3 characters per token
+        # Instead a tokenizer of HuggingFace or similar should be used instead
+        return len(re.sub(r'\s+', '', string)) / 2.8
     
     def __increase_paragraph_number(self, paragraph_number: str, heading_deepness: int) -> List:
         paragraph_number_list = paragraph_number.split('.')
@@ -87,15 +98,9 @@ class WordToDatastructure(ADocumentToDatastructure):
                 for cblock in self.iter_all_docx_blocks(cell):
                     if isinstance(cblock, Paragraph):
                         col_list_data.append(cblock.text)
-                        # if re.match("List\sParagraph",cblock.style.name):
-                        #     col_list_data.append(table.text)
-                        # else:
                         if not re.match("List\sParagraph",cblock.style.name):
-                            images = self.get_image_text(cblock)
                             if len(col_list_data) > 0:
                                 cell_value += " ".join(col_list_data)                            
-                            if len(images) > 0:
-                                cell_value = cell_value + images
                             else:
                                 cell_value = cell_value + cblock.text
                     elif isinstance(cblock, Table):
@@ -108,94 +113,129 @@ class WordToDatastructure(ADocumentToDatastructure):
                 first_row = False
         return md_table
 
+    def __append_to_data_structure(self, data_structure: List, text_for_request: str, paragraphs_to_process: List, paragraph_number: str) -> List:
+        paragraphs_to_process_str: str = '<No chapter found!>'
+        if len(paragraphs_to_process) > 0:
+            paragraphs_to_process_str: str = ', '.join(paragraphs_to_process) 
+        elif paragraph_number == self.INIT_PARAGRAPH:
+            '<Before first chapter!>'
 
-    def get_image_text(self, paragraph):
-        img_ids: List = []
-        root = ET.fromstring(paragraph._p.xml)
-        tag_namespaces: Dict = {
-                'a':"http://schemas.openxmlformats.org/drawingml/2006/main", \
-                'r':"http://schemas.openxmlformats.org/officeDocument/2006/relationships", \
-                'wp':"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"}
-        image_parent_parts = root.findall('.//wp:inline', tag_namespaces)
-        for inline in image_parent_parts:
-            images = inline.findall('.//a:blip', tag_namespaces)
-            for img in images:     
-                id = img.attrib['{{{0}}}embed'.format(tag_namespaces['r'])]
-                img_ids.append(id)
-        image_parent_parts = root.findall('.//wp:anchor',tag_namespaces)
-        for inline in image_parent_parts:
-            images2 = inline.findall('.//a:blip', tag_namespaces)
-            for img2 in images2:     
-                id = img2.attrib['{{{0}}}embed'.format(tag_namespaces['r'])]
-                img_ids.append(id)
-        response = ""
-        if len(img_ids) > 0:
-            for id in img_ids:
-                image_part = self.document.part.related_parts[id]
-                image_stream = io.BytesIO(image_part._blob) 
-                img = Image.open(image_stream)
-                format = img.format.lower()
-                # if (format in ("jpeg" ,"png" ,"gif" ,"bmp" ,"tiff" ,"jpg")):
-                #     img_text = pytesseract.image_to_string(img)
-                #     response +=img_text
-        return response
-
-    def __append_to_data_structure(self, data_structure: List, text_for_request: str, paragraphs_to_process: List) -> List:
-        paragraphs_to_process_str: str = ', '.join(paragraphs_to_process) if len(paragraphs_to_process) > 0 else '<No paragraphs found!>'
-        
         data_structure.append(
             {
-                self.TITLE_PARAMS: (2, f"Check of content for paragraphs {paragraphs_to_process_str}"),
-                self.CHECKER_INSTANCE: WordChecker(self.llm_utils, self.selected_paragraphs_requests, f' (Paragraphs {paragraphs_to_process_str})', f' (Paragraphs {paragraphs_to_process_str})'),
-                self.LLM_REQUEST_PARAMS: (text_for_request, True, f'List of paragraphs: {paragraphs_to_process_str}'),
-                self.DONE_TEXT: f"Paragraphs {paragraphs_to_process_str}"
+                self.TITLE_PARAMS: (1, f"Check of content for chapters {paragraphs_to_process_str}"),
+                self.CHECKER_INSTANCE: WordChecker(self.llm_utils, self.selected_paragraphs_requests, f' (Chapters {paragraphs_to_process_str})', f' (Chapters {paragraphs_to_process_str})'),
+                self.LLM_REQUEST_PARAMS: (text_for_request, True, f'List of chapters: {paragraphs_to_process_str}'),
+                self.DONE_TEXT: f"Chapters {paragraphs_to_process_str}"
             }
         )
-
         return data_structure
+
+    def __paragraph_number_caught(self, paragraph_number: str, paragraph_number_list: List) -> bool:
+        if paragraph_number_list is None or len(paragraph_number_list) == 0:
+            return None
+        if paragraph_number_list is not None and len(paragraph_number_list) > 0:
+            for paragraph_start in paragraph_number_list:
+                if paragraph_number.startswith(paragraph_start):
+                    return True
+        return False
+
+    def get_ocred_images(self, xmlstr, root, namespaces, document, block) -> List:
+        images_ocred: List = []
+        unique_id: int = 0
+        for run in block.runs:
+
+            if 'pic:pic' in xmlstr:
+                for pic in root.findall('.//pic:pic', namespaces):
+                    cNvPr_elem = pic.find("pic:nvPicPr/pic:cNvPr", namespaces)
+                    name_attr = cNvPr_elem.get("name")
+                    blip_elem = pic.find("pic:blipFill/a:blip", namespaces)
+                    embed_attr = blip_elem.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+                    image_name = f'Document_Imagefile/{name_attr}/{embed_attr}/{unique_id}'
+                    document_part = document.part
+                    image_part = document_part.related_parts[embed_attr]
+                    self.logger.info(f"Extracting OCR for image {image_name} (In case of memory error deactivate OCR)")
+                    reader = easyocr.Reader(['en', 'de', 'fr', 'da'])
+                    ocred_text: str = reader.readtext(image_part._blob)
+                    for text in ocred_text:
+                        ocred_text += (f'OCRed text: {text}\n')
+                    self.logger.info(f"OCRed for image {image_name}:\n{ocred_text}\n")
+                    images_ocred.append((image_name, ocred_text))
+
+                unique_id = unique_id + 1
+        return images_ocred
+            
 
     def _document_to_data_structure(self):
         text_for_request: str = ""
         last_text_found: str = ""
         latest_saved_heading_deepness: int = 0
         paragraphs_to_process: List = []
-        paragraph_number:str = '0.0.0.0'
+        paragraph_number:str = self.INIT_PARAGRAPH
         data_structure: List = []
 
-
         for doc_part in self.iter_all_docx_blocks(self.document):
-            if isinstance(doc_part, Paragraph):
+            image_found: bool = False
+            namespaces: List = None
+            root = None
+            if 'text' in str(doc_part):
+                current_text_list: List = []
+                for run in doc_part.runs:                        
+                    if run.bold:
+                        current_text_list.append(f'** {run.text} ** ')
+                    else:
+                        current_text_list.append(run.text)
+                    if self.enable_ocr:
+                        xmlstr: str = str(run.element.xml)
+                        namespaces = dict([node for _, node in ElementTree.iterparse(StringIO(xmlstr), events=['start-ns'])])
+                        root = ET.fromstring(xmlstr) 
+                        image_found = True
+
                 current_heading_style: str = doc_part.style.name.lower()
                 if current_heading_style.startswith('heading'):
                     current_heading_deepness: int = self.__get_heading_deepness(current_heading_style)
                     paragraph_number = self.__increase_paragraph_number(paragraph_number, current_heading_deepness)
+                    self.logger.info(f'paragraph_number: {paragraph_number}, self.paragraphs_to_skip: {self.paragraphs_to_skip}, self.paragraphs_to_keep: {self.paragraphs_to_keep}')
+                    if (self.__paragraph_number_caught(paragraph_number, self.paragraphs_to_skip) == True):
+                        self.logger.info(f"Paragraph {paragraph_number} being activeliy skipped as per request.")
+                        continue
 
-                    if self.__get_tokens(text_for_request + last_text_found) < self.context_length_source_document and \
+                    if (self.__paragraph_number_caught(paragraph_number, self.paragraphs_to_keep) == False):
+                        self.logger.info(f"Paragraph {paragraph_number} being skipped because not expected to be kept as per request.")
+                        continue
+
+                    if self.__get_number_tokens(text_for_request + last_text_found) < self.context_length_source_document and \
                        current_heading_deepness > latest_saved_heading_deepness and \
                        self.split_request_per_paragraph_deepness - 1 != current_heading_deepness:
                         text_for_request += last_text_found
                         last_text_found = ""
                     else:
                         latest_saved_heading_deepness = current_heading_deepness
-                        data_structure = self.__append_to_data_structure(data_structure, text_for_request, paragraphs_to_process)
+                        data_structure = self.__append_to_data_structure(data_structure, text_for_request, paragraphs_to_process, paragraph_number)
                         text_for_request = last_text_found
                         last_text_found = ""
                         paragraphs_to_process = []
                     paragraphs_to_process.append(paragraph_number)
-                    last_text_found += f'{"#" * current_heading_deepness} {doc_part.text}\n\n'
+                    last_text_found += f'{"#" * current_heading_deepness} {" ".join(current_text_list)}\n\n'
                     
                 else:
-                    last_text_found += doc_part.text + "\n\n"
+                    last_text_found += " ".join(current_text_list) + "\n\n"
+                
+                if image_found:
+                    for ocred_image_name, ocred_image_text in self.get_ocred_images(xmlstr, root, namespaces, self.document, doc_part):
+                        last_text_found += f'Image text from OCR: "{ocred_image_text}"\n\n'
+                        self.logger.info(f'Image name {ocred_image_name}, content: {ocred_image_text}')
+
+                    
             elif isinstance(doc_part, Table):
                 last_text_found += self.__convert_to_md_table(doc_part) + "\n"    
 
         text_for_request += last_text_found
         if len(text_for_request) > 0:
-            data_structure = self.__append_to_data_structure(data_structure, text_for_request, paragraphs_to_process)
+            data_structure = self.__append_to_data_structure(data_structure, text_for_request, paragraphs_to_process, paragraph_number)
         self.logger.info(f"Prepared document:\n{data_structure}")
         self.logger.info(f"Number requests :\n{len(data_structure)}")
         for data in data_structure:
-            self.logger.info(f'{data[self.TITLE_PARAMS][1]}: {int(self.__get_tokens(data[self.LLM_REQUEST_PARAMS][0]) * 10000 / self.context_length_source_document)/100.0}% context length used')
+            self.logger.info(f'{data[self.TITLE_PARAMS][1]}: {int(self.__get_number_tokens(data[self.LLM_REQUEST_PARAMS][0]) * 10000 / self.context_length_source_document)/100.0}% context length used')
 
         return data_structure
     

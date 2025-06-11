@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 import re
 import json
 from pprint import pformat, pprint

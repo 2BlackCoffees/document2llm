@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 from openai import OpenAI
 from pprint import pformat
 from typing import List, Dict

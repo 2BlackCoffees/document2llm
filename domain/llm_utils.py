@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 from typing import Dict, List
 import json
 import re

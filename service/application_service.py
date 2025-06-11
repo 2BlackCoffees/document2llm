@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 import re
 import os
 import sys
@@ -22,7 +25,7 @@ class DocumentType(Enum):
 
 class ApplicationService:
     def __init__(self, document_path: str, to_document: str, elements_to_skip: List, elements_to_keep: List, detailed_analysis: bool, reviewer_name: str, \
-                 simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, context_length: int,\
+                 simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, context_length: int, enable_ocr: bool,\
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
                  selected_deck_requests: List, selected_paragraphs_requests: List, split_request_per_paragraph_deepness: int,
                  model_name: str, context_path: str, pre_post_request_id: int, document_type: DocumentType, consider_bullets_for_crlf: bool= True):
@@ -87,7 +90,7 @@ class ApplicationService:
         elif document_type == DocumentType.DOCX:
             document_to_llm = WordToDatastructure(document_path, elements_to_skip, elements_to_keep,\
                  logger, content_out, llm_utils, \
-                 selected_paragraphs_requests, split_request_per_paragraph_deepness, llm_access,  context_length)
+                 selected_paragraphs_requests, split_request_per_paragraph_deepness, llm_access,  context_length, enable_ocr)
 
         document_to_llm.process()
         logger.info(f"Analysis stored in {to_document}")

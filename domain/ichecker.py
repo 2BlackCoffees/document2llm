@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 from abc import ABC, abstractmethod
 from typing import List
 from domain.llm_utils import LLMUtils

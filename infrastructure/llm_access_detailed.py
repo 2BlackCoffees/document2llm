@@ -1,4 +1,7 @@
 
+"""
+@author Jean-Philippe Ulpiano
+"""
 from typing import List, Dict
 import os
 from concurrent.futures import ThreadPoolExecutor

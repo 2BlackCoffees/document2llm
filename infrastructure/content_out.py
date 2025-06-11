@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 from domain.icontent_out import IContentOut
 from typing import List, Dict
 from pprint import pformat

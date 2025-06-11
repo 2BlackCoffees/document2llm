@@ -1,0 +1,9 @@
+torch 
+torchvision 
+torchaudio
+easyocr~=1.7.2
+easyocr[chinese]~=1.7.2
+easyocr[french]~=1.7.2
+easyocr[german]~=1.7.2
+easyocr[danish]~=1.7.2
+easyocr[italian ]~=1.7.2

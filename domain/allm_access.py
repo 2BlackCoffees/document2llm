@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 from abc import abstractmethod, ABC
 from typing import List
 import json

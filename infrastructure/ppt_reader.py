@@ -1,3 +1,6 @@
+"""
+@author Jean-Philippe Ulpiano
+"""
 from typing import Dict, List
 import re
 from pptx.enum.dml import MSO_COLOR_TYPE, MSO_FILL
