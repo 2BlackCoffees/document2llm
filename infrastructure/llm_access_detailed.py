@@ -9,14 +9,12 @@ from infrastructure.llm_access import LLMAccess
 
 class LLMAccessDetailed(LLMAccess):
     def __send_request_thread(self, request_input: Dict) -> str:
-        llm_requests, request_name = self._create_message(request_input['reviewer'], request_input['slide_contents_str'], request_input["request_name"]) 
-        llm_requests.append({
-                              "role": "user", 
-                              "content": self._get_request_llm_to_string(request_input)
-                            })
+        llm_requests: List = [{"role": "user", 
+                               "content": self._get_request_llm_to_string(request_input)}]
+        llm_requests = self._create_message(llm_requests, request_input['reviewer'], request_input['slide_contents_str']) 
         return self._send_request(llm_requests, \
                                   request_input['error_information'], \
-                                  request_name,\
+                                  request_input["request_name"],\
                                   request_input['temperature'],
                                   request_input['top_p'])
     

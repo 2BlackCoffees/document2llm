@@ -8,13 +8,13 @@ import logging
 from functools import partial
 from typing import List, Dict
 from service.application_service import ApplicationService, DocumentType
-from domain.llm_utils import LLMUtils
+from domain.llm_utils import LLMUtils, DocumentType
 
 
 program_name = os.path.basename(sys.argv[0])
 csv_ = partial(str.split, sep=',')
 
-reviewer_name: str = "Elon Musk"
+reviewer_properties: str = "a SME able to first compose highly cost effective team and second is capable to setup very high quality focused teams" # Elon Musk
 from_document: str = ""
 model_name: str = "llama3.3-70b"
 to_document: str = None
@@ -42,7 +42,7 @@ split_request_per_paragraph_deepness: int = -1
 context_length: int = 120000
 pre_post_request_id: int = 0
 only_slides = None
-document_type: DocumentType = DocumentType.PPTX
+document_type: DocumentType = DocumentType.ppt
 
 parser = argparse.ArgumentParser(prog=program_name, formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=f'Apply LLM requests to content of files. Environment variable {DOC2LLM_REQUESTS_PRE_POST_REQUEST} embed requests with a pre and post information.')
@@ -51,7 +51,7 @@ parser.add_argument('--to_document', type=str, help='Specify the review document
 parser.add_argument('--model_name', type=str, help=f'Specify the name of the LLM model to use. Default is {model_name}')
 parser.add_argument('--context_path', type=str, help='Path to a text file (whatever extension) where the contect of the document is described. If not orovided, headings will be used as context.')
 parser.add_argument('--detailed_analysis', action="store_true", help='Select a detailed analysis or high level one')
-parser.add_argument('--reviewer_name', type=int, help=f'Specify a reviewer name (Default is {reviewer_name}): Consider for example Jeff Bezos for management review.')
+parser.add_argument('--reviewer_properties', type=int, help=f'Specify a reviewer properties (Default is {reviewer_properties}): Consider for example Jeff Bezos for management review.')
 parser.add_argument('--debug', action="store_true", help='Set logging to debug')
 parser.add_argument('--force_top_p',type=float, help=f'Increases diversity from various probable outputs in results.')  # Add argument to increase diversity from various probable outputs in results
 parser.add_argument('--force_temperature', type=float, help=f'Higher temperature increases non sense and creativity while lower yields to focused and predictable results.')  # Add argument to increase non sense and creativity while lower yields to focused and predictable results
@@ -60,10 +60,9 @@ parser.add_argument('--pre_post_requests', type=int, help=f'Specify pre post req
 parser.add_argument('--context_length', type=int, help=f'Specify the context length acceptable from the part of source file (without including the number of tokens of the request), default is {context_length}')
 parser.add_argument('--enable_ocr',  action="store_true", help=f'When specified will OCR any image found: This can require a lot of memory and is deactivated by default')
 
-#ppt_parser = parser.add_subparsers(title='PowerPoint analysis')
 subparsers = parser.add_subparsers(dest='command')
 
-ppt_parser = subparsers.add_parser('ppt', epilog=f'PowerPoint analysis: Following environment variables can point to a JSON file. {DOC2LLM_REQUESTS_SLIDE_TEXT} for text requests per slide, {DOC2LLM_REQUESTS_DECK_TEXT} for text request for deck, {DOC2LLM_REQUESTS_SLIDE_ARTISTIC} for graphical requests per slide.')
+ppt_parser = subparsers.add_parser(DocumentType.ppt.name, epilog=f'PowerPoint analysis: Following environment variables can point to a JSON file. {DOC2LLM_REQUESTS_SLIDE_TEXT} for text requests per slide, {DOC2LLM_REQUESTS_DECK_TEXT} for text request for deck, {DOC2LLM_REQUESTS_SLIDE_ARTISTIC} for graphical requests per slide.')
 ppt_parser.add_argument('--skip_slides', type=csv_, help='Specify slides to skip: 1,2-5,8: Cannot be used with only_slides')
 ppt_parser.add_argument('--only_slides', type=csv_, help='Specify slides to keep: 1,2-5,8: Cannot be used with skip_slides')
 ppt_parser.add_argument('--text_slide_requests', type=csv_, help=f'Specify slide requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_slide_text_requests_and_ids_str()} ]], default is {selected_text_slide_requests}')
@@ -73,7 +72,7 @@ ppt_parser.add_argument('--no_artistic_slide_requests',action="store_true", help
 ppt_parser.add_argument('--deck_requests', type=csv_, help=f'Specify deck requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_deck_requests_and_ids_str()} ]], default is {selected_deck_requests}')
 ppt_parser.add_argument('--no_deck_requests',action="store_true", help=f'Skip deck check')
 
-doc_parser = subparsers.add_parser('doc', epilog=f'Word analysis: The environment variable {DOC2LLM_REQUESTS_DOC} can point to a JSON file for additional requests.')
+doc_parser = subparsers.add_parser(DocumentType.doc.name, epilog=f'Word analysis: The environment variable {DOC2LLM_REQUESTS_DOC} can point to a JSON file for additional requests.')
 doc_parser.add_argument('--skip_paragraphs', type=csv_, help='Specify paragraphs to skip: 1,2.1,3: Cannot be used with only_paragraphs')
 doc_parser.add_argument('--only_paragraphs', type=csv_, help='Specify paragraphs to keep: 2,3.4,5: Cannot be used with skip_paragraphs')
 doc_parser.add_argument('--split_request_per_paragraph_deepness', type=int, help='Specify paragraphs deepness to use to split requests, per default, no split is done (document split happens only per context_length)')
@@ -97,26 +96,29 @@ if args.to_document:
     to_document = args.to_document
 if args.context_path:
     context_path = args.context_path
-if args.reviewer_name:
-    reviewer_name = args.reviewer_name
+if args.reviewer_properties:
+    reviewer_properties = args.reviewer_properties
 if args.pre_post_requests:
     pre_post_request_id = args.pre_post_requests
 
 elements_to_skip: List = []
 elements_to_keep: List = []
 
-if args.command == 'doc':
-    document_type = DocumentType.DOCX
+if args.command == DocumentType.doc.name:
+    document_type = DocumentType.doc
     if args.paragraphs_requests:
-        selected_paragraphs_requests = [ int(element) for element in args.paragraphs_requests ]
+        selected_paragraphs_requests = LLMUtils.get_list_parameters(args.paragraphs_requests)
     if args.skip_paragraphs:
         elements_to_skip = args.skip_paragraphs
     if args.only_paragraphs:
         elements_to_keep = args.only_paragraphs
     if args.split_request_per_paragraph_deepness:
         split_request_per_paragraph_deepness = args.split_request_per_paragraph_deepness
-elif args.command == 'ppt' or document_type == DocumentType.PPTX:
-    document_type = DocumentType.PPTX
+    if args.skip_paragraphs and args.only_paragraphs:
+        print("ERROR: Please either use option skip_paragraphs or only_paragraphs but not both!")
+        sys.exit(0)
+elif args.command == DocumentType.ppt.name or document_type == DocumentType.ppt:
+    document_type = DocumentType.ppt
     if args.text_slide_requests:
         selected_text_slide_requests = LLMUtils.get_list_parameters(args.text_slide_requests)
     if args.no_text_slide_requests:
@@ -138,8 +140,9 @@ elif args.command == 'ppt' or document_type == DocumentType.PPTX:
     if args.only_slides:
         elements_to_keep = llm_utils.get_list_parameters(args.only_slides)
 
+llm_utils.set_document_type(document_type)
 ApplicationService(from_document, to_document, elements_to_skip, elements_to_keep, args.detailed_analysis, \
-                   reviewer_name, args.simulate_calls_only, logging_level, llm_utils, context_length, args.enable_ocr,\
+                   reviewer_properties, args.simulate_calls_only, logging_level, llm_utils, context_length, args.enable_ocr,\
                    selected_text_slide_requests, selected_artistic_slide_requests, \
                    selected_deck_requests, selected_paragraphs_requests, split_request_per_paragraph_deepness,
                    model_name, context_path, pre_post_request_id, document_type)

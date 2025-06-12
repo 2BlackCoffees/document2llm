@@ -43,8 +43,7 @@ class WordToDatastructure(ADocumentToDatastructure):
         self.context_length_source_document = context_length_source_document
         self.split_request_per_paragraph_deepness = split_request_per_paragraph_deepness
         self.enable_ocr = enable_ocr
-        if self.enable_ocr: 
-            import easyocr
+
 
 
     def __paragraph_number_string_list(self, paragraph_number_list: List) -> List:
@@ -154,11 +153,12 @@ class WordToDatastructure(ADocumentToDatastructure):
                     document_part = document.part
                     image_part = document_part.related_parts[embed_attr]
                     self.logger.info(f"Extracting OCR for image {image_name} (In case of memory error deactivate OCR)")
+                    import easyocr
                     reader = easyocr.Reader(['en', 'de', 'fr', 'da'])
                     ocred_text: str = reader.readtext(image_part._blob)
                     for text in ocred_text:
                         ocred_text += (f'OCRed text: {text}\n')
-                    self.logger.info(f"OCRed for image {image_name}:\n{ocred_text}\n")
+                    self.logger.debug(f"OCRed for image {image_name}:\n{ocred_text}\n")
                     images_ocred.append((image_name, ocred_text))
 
                 unique_id = unique_id + 1
@@ -168,7 +168,7 @@ class WordToDatastructure(ADocumentToDatastructure):
     def _document_to_data_structure(self):
         text_for_request: str = ""
         last_text_found: str = ""
-        latest_saved_heading_deepness: int = 0
+        latest_saved_heading_deepness: int = -1
         paragraphs_to_process: List = []
         paragraph_number:str = self.INIT_PARAGRAPH
         data_structure: List = []
@@ -194,9 +194,9 @@ class WordToDatastructure(ADocumentToDatastructure):
                 if current_heading_style.startswith('heading'):
                     current_heading_deepness: int = self.__get_heading_deepness(current_heading_style)
                     paragraph_number = self.__increase_paragraph_number(paragraph_number, current_heading_deepness)
-                    self.logger.info(f'paragraph_number: {paragraph_number}, self.paragraphs_to_skip: {self.paragraphs_to_skip}, self.paragraphs_to_keep: {self.paragraphs_to_keep}')
+                    self.logger.debug(f'paragraph_number: {paragraph_number}, self.paragraphs_to_skip: {self.paragraphs_to_skip}, self.paragraphs_to_keep: {self.paragraphs_to_keep}')
                     if (self.__paragraph_number_caught(paragraph_number, self.paragraphs_to_skip) == True):
-                        self.logger.info(f"Paragraph {paragraph_number} being activeliy skipped as per request.")
+                        self.logger.info(f"Paragraph {paragraph_number} being actively skipped as per request.")
                         continue
 
                     if (self.__paragraph_number_caught(paragraph_number, self.paragraphs_to_keep) == False):
@@ -205,15 +205,16 @@ class WordToDatastructure(ADocumentToDatastructure):
 
                     if self.__get_number_tokens(text_for_request + last_text_found) < self.context_length_source_document and \
                        current_heading_deepness > latest_saved_heading_deepness and \
-                       self.split_request_per_paragraph_deepness - 1 != current_heading_deepness:
+                       current_heading_deepness > self.split_request_per_paragraph_deepness - 1:
                         text_for_request += last_text_found
                         last_text_found = ""
-                    else:
-                        latest_saved_heading_deepness = current_heading_deepness
-                        data_structure = self.__append_to_data_structure(data_structure, text_for_request, paragraphs_to_process, paragraph_number)
-                        text_for_request = last_text_found
-                        last_text_found = ""
-                        paragraphs_to_process = []
+                    elif len(text_for_request) > 0:
+                            self.logger.debug(f"Preparing new request for text: {text_for_request}")
+                            latest_saved_heading_deepness = current_heading_deepness
+                            data_structure = self.__append_to_data_structure(data_structure, text_for_request, paragraphs_to_process, paragraph_number)
+                            text_for_request = last_text_found
+                            last_text_found = ""
+                            paragraphs_to_process = []
                     paragraphs_to_process.append(paragraph_number)
                     last_text_found += f'{"#" * current_heading_deepness} {" ".join(current_text_list)}\n\n'
                     
@@ -223,17 +224,16 @@ class WordToDatastructure(ADocumentToDatastructure):
                 if image_found:
                     for ocred_image_name, ocred_image_text in self.get_ocred_images(xmlstr, root, namespaces, self.document, doc_part):
                         last_text_found += f'Image text from OCR: "{ocred_image_text}"\n\n'
-                        self.logger.info(f'Image name {ocred_image_name}, content: {ocred_image_text}')
+                        self.logger.debug(f'Image name {ocred_image_name}, content: {ocred_image_text}')
 
-                    
             elif isinstance(doc_part, Table):
                 last_text_found += self.__convert_to_md_table(doc_part) + "\n"    
 
         text_for_request += last_text_found
         if len(text_for_request) > 0:
             data_structure = self.__append_to_data_structure(data_structure, text_for_request, paragraphs_to_process, paragraph_number)
-        self.logger.info(f"Prepared document:\n{data_structure}")
-        self.logger.info(f"Number requests :\n{len(data_structure)}")
+        self.logger.debug(f"Prepared document:\n{data_structure}")
+        self.logger.info(f"Number of requests to LLM:{len(data_structure)}")
         for data in data_structure:
             self.logger.info(f'{data[self.TITLE_PARAMS][1]}: {int(self.__get_number_tokens(data[self.LLM_REQUEST_PARAMS][0]) * 10000 / self.context_length_source_document)/100.0}% context length used')
 

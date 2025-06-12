@@ -4,19 +4,26 @@
 from typing import Dict, List
 import json
 import re
-from pptx.enum.dml import MSO_COLOR_TYPE, MSO_FILL
-from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pprint import pprint, pformat
 from pathlib import Path
+from enum import Enum
+
+class DocumentType(Enum):
+    ppt = 1
+    doc = 2
+
+# TODO refactor with OOP: We need a word and a PPT speclisation
 class LLMUtils:
     def __init__(self, color_palette: List, \
-                 slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, word_requests_filename: str, additional_requests_filename: str):
+                 slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, word_requests_filename: str, additional_requests_filename: str,
+                 ):
         color_palette.append("transparent")
         slide_text_external_requests: List = self.__read_json(slide_text_filename)
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
         deck_text_external_requests : List = self.__read_json(slide_deck_filename)
         word_review_external_requests: List = self.__read_json(word_requests_filename)
         additional_requests: List = self.__read_json(additional_requests_filename)
+        self.document_type = DocumentType.ppt
 
         self.additional_context: str = None
         self.slide_artistic_content_review_llm_requests = [
@@ -69,11 +76,11 @@ class LLMUtils:
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Text Readability checks',
-                'request': "Read the text out loud and suggest simplification if the text is hard to read or comprehend.",
+                'request': "Read all out loud and suggest simplification if the message is hard to read or comprehend.",
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Extract technical details',
-                'request': "* Extract all technical details of this document.\n \
+                'request': "* Extract all technical details.\n \
                             * Provide technical details as a list of bullet points.\n\
                             * Describe the complexity of the technical expectation.\n\
                             * Prepare all necessary questions to ensure the technical scope can be clarified.",
@@ -95,7 +102,7 @@ class LLMUtils:
                 'temperature': 0.5, 'top_p': 0.5 
             },
             {'request_name': 'Extract commercial details',
-                'request': "* Extract all commercial details of this document. \n\
+                'request': "* Extract all commercial details. \n\
                             * Provide commercial details as a list of bullet points. \n\
                             * Describe the complexity of the commercial expectations.\n\
                             * Prepare all necessary questions to ensure the commercial scope can be clarified.",
@@ -184,6 +191,9 @@ class LLMUtils:
         ]
         self.pre_post_additional_requests.extend(additional_requests)
     
+    def set_document_type(self, document_type: DocumentType) -> None:
+        self.document_type = document_type
+        
     def set_pre_post_additional_request(self, pre_post_additional_request_id: int) -> None:
         pre_additional_request: str = ""
         post_additional_request: str = ""
@@ -196,6 +206,7 @@ class LLMUtils:
             create_summary_findings = pre_post_request["create_summary_findings"]
 
         for request_group in [
+                                self.word_review_llm_requests,
                                 self.deck_review_llm_requests, 
                                 self.slide_text_review_llm_requests, 
                                 self.slide_artistic_content_review_llm_requests
@@ -323,73 +334,78 @@ class LLMUtils:
                 parameter_list.append(int(parameter))
         return parameter_list
     
-    def get_llm_review_description(self, reviewer: str) -> str:
-        return f"- You impersonate {reviewer}, your tasks consisting in thoroughly reviewing slides of a deck keeping the characteristics leading to excellence expected from {reviewer}.\n"+\
-                "- The data you will analyze is an export of a deck into JSON data.\n"+\
-                "- Do not comment on the JSON source itself.\n"+\
-                "- The JSON structure will provide text content and shape's geometry and layout.\n"+\
-                "- In your analysis and  documentation, you will exclusively refer to the content of the JSON structure representing the slides of the deck."
+    def get_llm_reviewer_set(self, reviewer: str) -> str:
+        return_str: str = f"- You impersonate {reviewer}, for all prompts keeping the characteristics leading to excellence as expected from {reviewer}\n"
+        if self.document_type == DocumentType.ppt:
+                return_str +=   "- The data you will analyze is an export of a deck into JSON data.\n"+\
+                                "- Do not comment on the JSON source itself.\n"+\
+                                "- The JSON structure will provide text content and shape's geometry and layout.\n"+\
+                                "- In your analysis and  documentation, you will exclusively refer to the content of the JSON structure representing the document."
+        return return_str
 
     # TODO: This method will have to be better integrated to provide graphic or table details according to the request 
     def get_llm_instructions(self, request_has_graphical: bool = False):
-        instructions: str = f"""Consider the following json for text boxes or groups of shapes the json information represents shapes of a pptx slide, your analysis shall take into account the full text present in the slide that can be extracted from the provided JSON as follows (Please NEVER EVER mention this JSON in your response, mention you are analyzing a slide instead):
-                                
-                            "shape": {{
-                                "slide_number": This is the slide number: many shapes per slide will be provided,"""
-        if request_has_graphical:
-            instructions += """
-                                "rotation_degrees": rotation of the shape in degree,
-                                "shape_fore_color": filled colour of the shape: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
-                                "line":{{
-                                    "line_color": colour of the line of the shape: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
-                                    "is_dash_style": "Yes" if dash_style  else "No",
-                                    "line_width_points": line thickness in points
-                                }},
-                                "position": {{
-                                    "from_left": This is the x position of the shape from the left expressed in percentage of the width of the slide,
-                                    "from_top": This is the y position of the shape from the top expressed in percentage of the height of the slide
-                                }},
-                                "size": {{
-                                    "width": This is the width of the shape Expressed in percentage of the width of the slide,
-                                    "height": This is the height of the shape Expressed  in percentage of the hgight of the slide
-                                }},
-                                "font_details": {{
-                                    "font_name": Name of the font,
-                                    "text_color": Color of the text: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
-                                    "font_size": Size of the font in points,
-                                    "text_impacted": Part of the text mentioned before having the specific font details: Can be an array of strings
+        instructions: str = None
+        if self.document_type == DocumentType.ppt:
+            instructions = f"""Consider the following json for text boxes or groups of shapes the json information represents shapes of a pptx slide, your analysis shall take into account the full text present in the slide that can be extracted from the provided JSON as follows (Please NEVER EVER mention this JSON in your response, mention you are analyzing a slide instead):
+                                    
+                                "shape": {{
+                                    "slide_number": This is the slide number: many shapes per slide will be provided,"""
+            if request_has_graphical:
+                instructions += """
+                                    "rotation_degrees": rotation of the shape in degree,
+                                    "shape_fore_color": filled colour of the shape: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
+                                    "line":{{
+                                        "line_color": colour of the line of the shape: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
+                                        "is_dash_style": "Yes" if dash_style  else "No",
+                                        "line_width_points": line thickness in points
+                                    }},
+                                    "position": {{
+                                        "from_left": This is the x position of the shape from the left expressed in percentage of the width of the slide,
+                                        "from_top": This is the y position of the shape from the top expressed in percentage of the height of the slide
+                                    }},
+                                    "size": {{
+                                        "width": This is the width of the shape Expressed in percentage of the width of the slide,
+                                        "height": This is the height of the shape Expressed  in percentage of the hgight of the slide
+                                    }},
+                                    "font_details": {{
+                                        "font_name": Name of the font,
+                                        "text_color": Color of the text: can be a 3 bytes hexadecimal vale RRGGBB or a Powerpoint scheme name,
+                                        "font_size": Size of the font in points,
+                                        "text_impacted": Part of the text mentioned before having the specific font details: Can be an array of strings
+                                    }}
+                """
+                instructions += """
+                                    "text": This is the text contained in the shape: it will contain a newline character (“n”) separating each paragraph and a vertical-tab (“v”) character for each line break,
+                                    "type": This is the type of the shape,
+                                    "is_title": This says if the text is the title of the slide
                                 }}
-            """
+                            
+                            And consider following json for tables:
+                                "shape": {{
+                                    "slide_number": This is the slide number,"""
+            if request_has_graphical:
+                instructions += """
+                                    "position": {{
+                                        "from_left": This is the x position of the shape from the left expressed in percentage of the width of the slide,
+                                        "from_top": This is the y position of the shape from the top expressed in percentage of the height of the slide
+                                    }},
+                                    "size": {{
+                                        "width": This is the width of the shape expressed in percentage of the width of the slide,
+                                        "height": This is the height of the shape expressed in percentage of the height of the slide
+                                    }},
+                                    "table_size": {{
+                                        "number_cols": Number of columns of the table,
+                                        "number_rows": Number of rows for the table
+                                    }},"""
             instructions += """
-                                "text": This is the text contained in the shape: it will contain a newline character (“n”) separating each paragraph and a vertical-tab (“v”) character for each line break,
-                                "type": This is the type of the shape,
-                                "is_title": This says if the text is the title of the slide
-                            }}
-                         
-                         And consider following json for tables:
-                            "shape": {{
-                                "slide_number": This is the slide number,"""
-        if request_has_graphical:
-            instructions += """
-                                "position": {{
-                                    "from_left": This is the x position of the shape from the left expressed in percentage of the width of the slide,
-                                    "from_top": This is the y position of the shape from the top expressed in percentage of the height of the slide
-                                }},
-                                "size": {{
-                                    "width": This is the width of the shape expressed in percentage of the width of the slide,
-                                    "height": This is the height of the shape expressed in percentage of the height of the slide
-                                }},
-                                "table_size": {{
-                                    "number_cols": Number of columns of the table,
-                                    "number_rows": Number of rows for the table
-                                }},"""
-        instructions += """
 
-                                "table_cells": The table will be provided in a mark down format,
-                                "type": "table"
-                                }} 
-                            """
-        instructions = instructions.replace('\\"', '"').replace('\\n', '\n')
+                                    "table_cells": The table will be provided in a mark down format,
+                                    "type": "table"
+                                    }} 
+                                """
+
+            instructions = instructions.replace('\\"', '"').replace('\\n', '\n')
         return instructions
 
     @staticmethod

@@ -31,23 +31,26 @@ class LLMAccess(AbstractLLMAccess):
 
         return request_llm
     
-    def _create_message(self, reviewer: str, content: str, request_name: str):
-        request_list: List = [  {"role": "system", "content": f'[{self.llm_utils.get_llm_review_description(reviewer)}]'}]
+    def _create_message(self, llm_requests: List, reviewer: str, content: str):
+        self.logger.debug(f"_create_message:content = {content}")
+        llm_requests.insert(0, {"role": "system", "content": f'[{self.llm_utils.get_llm_reviewer_set(reviewer)}]'})
         if self.llm_utils.get_additional_context() is not None:
-            request_list.append({"role": "user",   "content": f'[{self.llm_utils.get_additional_context()}]'})
-        request_list.extend([   {"role": "user",   "content": f'[{self.llm_utils.get_llm_instructions()}]'},\
-                                {"role": "user",   "content": content}])
-        return request_list, request_name
+            llm_requests.append({"role": "user",   "content": f'[{self.llm_utils.get_additional_context()}]'})
+        instructions: str = self.llm_utils.get_llm_instructions()
+        if instructions is not None:
+            llm_requests.append({"role": "user",   "content": f'[{instructions}]'})
+        llm_requests.append({"role": "user",   "content": content})
+        self.logger.debug(f"_create_message:request_list = {pformat(llm_requests, width=150)}")
+        return llm_requests
 
     def _create_messages(self, request_inputs: List, content: str):
         llm_requests: List = []
         request_names: List = []
         avg_temperature: float = 0
         avg_top_p: float = 0
+        self.logger.debug(f"content: {content}")
         if len(request_inputs) > 0:
             # Prepare request and add content of slide
-            llm_requests, request_name = self._create_message(request_inputs[0]['reviewer'], content, request_inputs[0]["request_name"])
-            request_names.append(request_name)
             for request_input in request_inputs:
                 llm_requests.append({
                                      "role": "user", \
@@ -57,7 +60,8 @@ class LLMAccess(AbstractLLMAccess):
                 request_names.append(request_input["request_name"])
                 avg_temperature += request_input['temperature'] if request_input['temperature'] is not None else 0
                 avg_top_p += request_input['top_p'] if request_input['top_p'] is not None else 0
-
+            llm_requests = self._create_message(llm_requests, request_inputs[0]['reviewer'], content)
+            request_names.append(request_inputs[0]["request_name"])
             avg_temperature /= len(request_inputs)
             avg_top_p /= len(request_inputs)
         return llm_requests, request_names, avg_temperature, avg_top_p
@@ -68,7 +72,7 @@ class LLMAccess(AbstractLLMAccess):
         #pprint(request)
         return_message: str = None
 
-        reformatted_messages: List = []
+        reformatted_request_messages: List = []
 
         for message in messages:
             reformatted_message: dict = {}
@@ -76,21 +80,22 @@ class LLMAccess(AbstractLLMAccess):
                 if isinstance(value, str):
                     value = value.replace('\\uf0e0', '')
                 reformatted_message[key] = value
-            reformatted_messages.append(reformatted_message)
+            reformatted_request_messages.append(reformatted_message)
 
         self.logger.debug(f'\nRequesting LLm with:\n{"-" * 20}\n  Request name {request_name} '+\
-                         f'\n  request JSON Dumped:\n  {"-" * 20}\n{json.dumps(reformatted_messages, sort_keys=True, indent=2, separators=(",", ": "))}'+\
-                         f'\n  request NON JSON Dumped:\n  {"-" * 24}:\n{reformatted_messages}')
+                         f'\n  request JSON Dumped:\n  {"-" * 20}\n{json.dumps(reformatted_request_messages, sort_keys=True, indent=2, separators=(",", ": "))}'+\
+                         f'\n  request NON JSON Dumped:\n  {"-" * 24}:\n{reformatted_request_messages}')
         review = self.client.chat.completions.create(
             model=self.model_name,
-            messages=reformatted_messages,
+            messages=reformatted_request_messages,
             temperature=temperature,
             top_p=top_p
         )
 
         return_message = re.sub(r'\'\s+.*refusal=.*,.*role=.*\)', '', re.sub(r'ChatCompletionMessage\(content=', '', str(review.choices[0].message.content.strip())))
-        formatted_message = "\n".join([ "  " + message for message in return_message.split("\n")])
-        self.logger.info(f'\nLLm response:\n{"-" * 13}\n{formatted_message}')
+        formatted_response = "\n".join([ "  " + message for message in return_message.split("\n")])
+        self.logger.info(f'\nRequest:\n{"-" * 13}\n{pformat(reformatted_request_messages, width=150)}')
+        self.logger.info(f'\nLLm response:\n{"-" * 13}\n{formatted_response}')
 
         return {
             'request_name': request_name,
@@ -110,7 +115,7 @@ class LLMAccess(AbstractLLMAccess):
                 response = self._send_request_plain(messages, request_name, temperature, top_p)
                 openai_response = True
             except Exception as err:                    
-                self.logger.warning(f"{error_information}: {request_name}: Caught exception {err=}, {type(err)=}\nMessage: {pformat(messages)}")
+                self.logger.warning(f"{error_information}: {request_name}: Caught exception {err=}, {type(err)=}\nMessage: {pformat(messages, width=150)}")
                 if "ContextWindowExceededError" in str(err):
                     self.logger.error(f"{request_name}: It seems your request is too big.")
                     raise ContextWindowExceededError(f"{request_name}: It seems your request is too big.")
