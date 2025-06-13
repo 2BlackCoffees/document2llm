@@ -4,6 +4,7 @@
 from typing import Dict, List
 import json
 import re
+import os
 from pprint import pprint, pformat
 from pathlib import Path
 from enum import Enum
@@ -79,11 +80,11 @@ class LLMUtils:
                 'request': "Read all out loud and suggest simplification if the message is hard to read or comprehend.",
                 'temperature': 0.3, 'top_p': 0.2 
             },
-            {'request_name': 'Extract technical details',
-                'request': "* Extract all technical details.\n \
-                            * Provide technical details as a list of bullet points.\n\
-                            * Describe the complexity of the technical expectation.\n\
-                            * Prepare all necessary questions to ensure the technical scope can be clarified.",
+            {'request_name': 'Extract {DOC2LLM_DETAIL_TYPE, technical} details',
+                'request': "* Extract all {DOC2LLM_DETAIL_TYPE, technical} details.\n \
+                            * Provide {DOC2LLM_DETAIL_TYPE, technical} details as a list of bullet points.\n\
+                            * Describe the complexity of the {DOC2LLM_DETAIL_TYPE, technical} expectation.\n\
+                            * Prepare all necessary questions to ensure the {DOC2LLM_DETAIL_TYPE, technical} scope can be clarified.",
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Propose a team',
@@ -190,7 +191,37 @@ class LLMUtils:
             }
         ]
         self.pre_post_additional_requests.extend(additional_requests)
+        self.process_update_env_vars()
     
+    def process_update_env_vars(self) -> None:
+        for request_group in [
+                                self.word_review_llm_requests,
+                                self.deck_review_llm_requests, 
+                                self.slide_text_review_llm_requests, 
+                                self.slide_artistic_content_review_llm_requests
+                             ]:
+            for request in request_group:
+                for request_type in ['request_name', 'request']:
+                    request[request_type] = self.resolve_env_var(request[request_type])
+        for request in self.pre_post_additional_requests:
+            for request_type in ['request_name', 'pre_additional_request', 'post_additional_request']:
+                request[request_type] = self.resolve_env_var(request[request_type])
+
+    def resolve_env_var(self, request) -> str:
+        list_replacements: List = []
+        for match in re.finditer(r'{([^}]*)}', request, re.S):
+            found_match = match.group(1)
+            env_var_name: str = found_match
+            default_value: str = ""
+            if ',' in found_match:
+                env_var_name, default_value = found_match.split(',')
+            replacement: str = os.getenv(env_var_name, default_value)
+            list_replacements.append((f'{{{found_match}}}', replacement))
+
+        for match, replacement in list_replacements:
+            request = request.replace(match, replacement, 1)
+        return request
+
     def set_document_type(self, document_type: DocumentType) -> None:
         self.document_type = document_type
         
