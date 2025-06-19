@@ -8,7 +8,7 @@ from typing import List, Dict, Tuple
 from logging import Logger
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
-from domain.ichecker import DeckChecker, ArtisticSlideChecker, TextSlideChecker
+from domain.ichecker import DeckChecker, ArtisticSlideChecker, TextSlideChecker, PostProcessChecker
 from domain.allm_access import AbstractLLMAccess
 from domain.llm_utils import LLMUtils
 from domain.icontent_out import IContentOut
@@ -25,9 +25,8 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
                  logger: Logger, content_out: IContentOut, llm_utils: LLMUtils, \
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
                  selected_deck_requests: List, llm_access: AbstractLLMAccess, consider_bullets_for_crlf: bool= True):
-        super().__init__(logger, content_out, llm_access)
+        super().__init__(logger, content_out, llm_access, llm_utils)
         self.document =  Presentation(document_path)
-        self.llm_utils = llm_utils
         self.document_path = document_path
         self.crlf_replacement = " * " if consider_bullets_for_crlf else " "
         self.slides_to_skip = slides_to_skip

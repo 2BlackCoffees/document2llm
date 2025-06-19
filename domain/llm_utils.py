@@ -13,8 +13,10 @@ class DocumentType(Enum):
     ppt = 1
     doc = 2
 
-# TODO refactor with OOP: We need a word and a PPT speclisation
+# TODO refactor with OOP: We need a word and a PPT specialisation
 class LLMUtils:
+    post_additional_request_id: int = 0
+    CREATE_SUMMARY_FINDINGS = "create_summary_findings"
     def __init__(self, color_palette: List, \
                  slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, word_requests_filename: str, additional_requests_filename: str,
                  ):
@@ -87,30 +89,16 @@ class LLMUtils:
                             * Prepare all necessary questions to ensure the {DOC2LLM_DETAIL_TYPE, technical} scope can be clarified.",
                 'temperature': 0.3, 'top_p': 0.2 
             },
-            {'request_name': 'Propose a team',
-                'request': "* Considering technical expectations, technical details, suggest a steady state team allowing to provide the best cost possible ensuring quality. \n\
-                            * Consider as much offshore as possible keeping in mind onshore for communication and nearshore for data access restriction like GDPR. \n\
-                            * Explain the advantages and drawbacks of the team you set up. \n\
-                            * Describe how transition will happen, we expect , OnBoarding, KT, Shadow, Reverse Shadow and Steady state. \n\
-                            * Describe how ramp up will happen. \n\
-                            * Provide the team in terms or ressource loading sheet following the below template ensuring the columns related to the numbers are equals to the number of months expected for the project.\
-                            * Ensure the table provided will depict the ramp up and all one column per month as expected by the project: \n\
-                                | Location | Role | High level skills | Grade | (First month: Example 2025-01) | (Second month: Example 2025-02) | (Add a column for all aditional months needed) |\n\
-                                | --- | --- | --- | --- | --- | --- | --- |\n\
-                                | (India for offshore, Nearshore country or OnShore country for very critical roles) | (Role name: Project manager, Transition manager, Solutions architect, DevOps, ...) | (Example: Project Management, Technical or management details required) | (Between A and H, Fresher are grade A, grade C is senior, Grade D tech lead, Garde E is senior tech lead or architect, F is Senior architect, G is solutions architect or program manager, H is senior grade G) | (Example 20%) | (Example 100%) | (Example 50%) |\n\
-                                    \
-                            * Provide a job description for each of the roles you have proposed detailing all technical and management skills required.",
-                'temperature': 0.5, 'top_p': 0.5 
-            },
             {'request_name': 'Extract commercial details',
                 'request': "* Extract all commercial details. \n\
+                            * Provide all details regarding start date, end date and transition length if specified. \n\
                             * Provide commercial details as a list of bullet points. \n\
                             * Describe the complexity of the commercial expectations.\n\
                             * Prepare all necessary questions to ensure the commercial scope can be clarified.",
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Text take away checks', 
-                'request': "Ensure all paragraphs hava a clear, memorable takeaway."\
+                'request': "Ensure all paragraphs have a clear, memorable takeaway."\
                            "Please provide concrete and valuable suggestion improvements."\
                            "Ensure a takeaway exists for each paragraph and suggest improvement or propose one new.",
                 'temperature': 0.3, 'top_p': 0.2 
@@ -168,29 +156,28 @@ class LLMUtils:
         ]
         self.deck_review_llm_requests.extend(deck_text_external_requests)
 
-        self.pre_post_additional_requests = [
+        self.post_additional_requests = [
                         {
                 "request_name": "None", 
-                "pre_additional_request": "",
-                "post_additional_request": "",
-                "create_summary_findings": False
+                "request": "",
+                self.CREATE_SUMMARY_FINDINGS: False
 
             },
             {
                 "request_name": "Summary finding", 
-                "pre_additional_request": "- For the below request, provide 5 to 7 detailed findings including suggestions.\n\n- Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ).",
-                "post_additional_request": "- Summarize in a table the 3 most important finding types that you found: \n\n| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding Type: Not a summary but the type of finding) | (Number of such findings) | (Weight of this finding. It is an integer ranging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n",
-                "create_summary_findings": True
+                "request": "- The below text is the result of a LLM analysis, provide 5 to 7 detailed findings including suggestions.\n\n- Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ). - Summarize in a table the 10 most important finding types that you found: \n\n| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding Type: Not a summary but the type of finding) | (Number of such findings) | (Weight of this finding. It is an integer ranging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n",
+                'temperature': 0.6, 'top_p': 0.6, 
+                self.CREATE_SUMMARY_FINDINGS: True
             },
             {
                 "request_name": "Formatted output without summary", 
-                "pre_additional_request": "- For the below request, provide all your findings including suggestions.\n\n- Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ).",
-                "post_additional_request": "",
-                "create_summary_findings": False
+                "request": "- The below text is the result of a LLM analysis, provide all your findings including suggestions.\n\n- Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ).",
+                'temperature': 0.6, 'top_p': 0.6, 
+                self.CREATE_SUMMARY_FINDINGS: False
 
             }
         ]
-        self.pre_post_additional_requests.extend(additional_requests)
+        self.post_additional_requests.extend(additional_requests)
         self.process_update_env_vars()
     
     def process_update_env_vars(self) -> None:
@@ -203,8 +190,8 @@ class LLMUtils:
             for request in request_group:
                 for request_type in ['request_name', 'request']:
                     request[request_type] = self.resolve_env_var(request[request_type])
-        for request in self.pre_post_additional_requests:
-            for request_type in ['request_name', 'pre_additional_request', 'post_additional_request']:
+        for request in self.post_additional_requests:
+            for request_type in ['request_name', 'request']:
                 request[request_type] = self.resolve_env_var(request[request_type])
 
     def resolve_env_var(self, request) -> str:
@@ -225,26 +212,21 @@ class LLMUtils:
     def set_document_type(self, document_type: DocumentType) -> None:
         self.document_type = document_type
         
-    def set_pre_post_additional_request(self, pre_post_additional_request_id: int) -> None:
-        pre_additional_request: str = ""
-        post_additional_request: str = ""
-        create_summary_findings: bool = False
+    def get_post_additional_request(self) -> str:
+        if self.post_additional_request_id >= 0 and self.post_additional_request_id < len(self.post_additional_requests):
+            return [ self.post_additional_requests[self.post_additional_request_id] ]
+        return []
+    
+    def set_post_additional_request(self, post_additional_request_id: int) -> bool:
+        self.post_additional_request_id = post_additional_request_id
 
-        if pre_post_additional_request_id > 0 and pre_post_additional_request_id < len(self.pre_post_additional_requests):
-            pre_post_request: dict = self.pre_post_additional_requests[pre_post_additional_request_id]
-            pre_additional_request = pre_post_request["pre_additional_request"]
-            post_additional_request = pre_post_request["post_additional_request"]
-            create_summary_findings = pre_post_request["create_summary_findings"]
+        if post_additional_request_id >= 0 and post_additional_request_id < len(self.post_additional_requests):
+            post_request: dict = self.post_additional_requests[post_additional_request_id]
+            if self.CREATE_SUMMARY_FINDINGS in post_request: 
+                return post_request[self.CREATE_SUMMARY_FINDINGS]
+            
+        return False
 
-        for request_group in [
-                                self.word_review_llm_requests,
-                                self.deck_review_llm_requests, 
-                                self.slide_text_review_llm_requests, 
-                                self.slide_artistic_content_review_llm_requests
-                             ]:
-            for request in request_group:
-                request['request'] = pre_additional_request + request['request'] + post_additional_request
-        return create_summary_findings
     
     def set_additional_context(self, additional_context: str) -> None:
         self.additional_context = additional_context
@@ -304,8 +286,8 @@ class LLMUtils:
     def get_all_deck_review_llm_requests(self, from_list: List = None):
         return self.__get_all_requests(self.deck_review_llm_requests, from_list)
     
-    def get_all_pre_post_llm_requests(self, from_list: List = None):
-        return self.__get_all_requests(self.pre_post_additional_requests, from_list)
+    def get_all_post_llm_requests(self, from_list: List = None):
+        return self.__get_all_requests(self.post_additional_requests, from_list)
 
     
     def __get_all_requests_and_ids(self, request_list: List, from_list: List = None):
@@ -324,8 +306,8 @@ class LLMUtils:
     def get_all_text_slide_requests_and_ids(self, from_list: List = None):
         return self.__get_all_requests_and_ids(self.slide_text_review_llm_requests, from_list)
     
-    def get_all_pre_post_llm_requests_and_ids(self, from_list: List = None):
-        return self.__get_all_requests_and_ids(self.pre_post_additional_requests, from_list)
+    def get_all_post_llm_requests_and_ids(self, from_list: List = None):
+        return self.__get_all_requests_and_ids(self.post_additional_requests, from_list)
     
     def get_all_deck_requests_and_ids(self, from_list: List = None):
         return self.__get_all_requests_and_ids(self.deck_review_llm_requests, from_list)
@@ -349,8 +331,8 @@ class LLMUtils:
         all_requests = self.get_all_deck_requests_and_ids(from_list)
         return separator.join([f"{req['idx']}: {req['llm_request']}" for req in all_requests])
 
-    def get_all_pre_post_llm_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
-        all_requests = self.get_all_pre_post_llm_requests_and_ids(from_list)
+    def get_all_post_llm_requests_and_ids_str(self, from_list: List = None, separator: str = " *** "):
+        all_requests = self.get_all_post_llm_requests_and_ids(from_list)
         return separator.join([f"{req['idx']}: {req['llm_request']}" for req in all_requests])
     
     @staticmethod

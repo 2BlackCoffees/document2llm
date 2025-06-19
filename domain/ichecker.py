@@ -41,3 +41,7 @@ class WordChecker(IChecker):
     def get_all_requests(self) -> List:
         return self.llm_utils.get_all_word_review_llm_requests(self.from_list)
 
+class PostProcessChecker(IChecker):
+    def get_all_requests(self) -> List:
+        return self.llm_utils.get_post_additional_request()
+

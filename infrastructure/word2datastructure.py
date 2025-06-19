@@ -33,9 +33,8 @@ class WordToDatastructure(ADocumentToDatastructure):
                  logger: Logger, content_out: IContentOut, llm_utils: LLMUtils, \
                  selected_paragraphs_requests: List, split_request_per_paragraph_deepness: int, llm_access: AbstractLLMAccess, 
                  context_length_source_document: int, enable_ocr: bool):
-        super().__init__(logger, content_out, llm_access)
+        super().__init__(logger, content_out, llm_access, llm_utils)
         self.document =  Document(document_path)
-        self.llm_utils = llm_utils
         self.document_path = document_path
         self.paragraphs_to_skip = self.__paragraph_number_string_list(paragraphs_to_skip)
         self.paragraphs_to_keep = self.__paragraph_number_string_list(paragraphs_to_keep)
@@ -70,6 +69,7 @@ class WordToDatastructure(ADocumentToDatastructure):
             for index in range(heading_deepness + 1, len(paragraph_number_list)):
                 paragraph_number_list[index] = '0'
             return '.'.join(paragraph_number_list)
+        return paragraph_number
    
     def iter_all_docx_blocks(self, parent):
         if isinstance(parent, _Document):
@@ -193,6 +193,7 @@ class WordToDatastructure(ADocumentToDatastructure):
                 current_heading_style: str = doc_part.style.name.lower()
                 if current_heading_style.startswith('heading'):
                     current_heading_deepness: int = self.__get_heading_deepness(current_heading_style)
+                    self.logger.info(f"paragraph_number: {paragraph_number}")
                     paragraph_number = self.__increase_paragraph_number(paragraph_number, current_heading_deepness)
                     self.logger.debug(f'paragraph_number: {paragraph_number}, self.paragraphs_to_skip: {self.paragraphs_to_skip}, self.paragraphs_to_keep: {self.paragraphs_to_keep}')
                     if (self.__paragraph_number_caught(paragraph_number, self.paragraphs_to_skip) == True):

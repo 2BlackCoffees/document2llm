@@ -120,15 +120,16 @@ class ContentOut(IContentOut):
             if finding[self.NAME_FINDING_KEY] != self.TOTAL_FINDINGS:
                 slide_findings_with_total.append(finding)
                 total_penalties += finding[self.NUMBER_FINDING_KEY] * finding[self.WEIGHT_FINDING_KEY]
-        slide_findings_with_total.append({
-            self.NAME_FINDING_KEY: self.TOTAL_FINDINGS,
-            self.NUMBER_FINDING_KEY: 1,
-            self.WEIGHT_FINDING_KEY: total_penalties
-        })
-        self.logger.debug(f'Appended total finding ({len(slide_findings_with_total)} findings): {pformat(slide_findings_with_total[-1])}')
+        if len(slide_findings_with_total) > 0:
+            slide_findings_with_total.append({
+                self.NAME_FINDING_KEY: self.TOTAL_FINDINGS,
+                self.NUMBER_FINDING_KEY: 1,
+                self.WEIGHT_FINDING_KEY: total_penalties
+            })
+            self.logger.debug(f'Appended total finding ({len(slide_findings_with_total)} findings): {pformat(slide_findings_with_total[-1])}')
 
-        self.findings[slide_info] = slide_findings_with_total
-        self.logger.debug(f'Updated finding for {slide_info}:\n {len(self.findings)} total finding: {pformat(self.findings)}')
+            self.findings[slide_info] = slide_findings_with_total
+            self.logger.debug(f'Updated finding for {slide_info}:\n {len(self.findings)} total finding: {pformat(self.findings)}')
 
     def __most_important_findings(self, max_findings: int) -> str:
         slide_sorting_generation: List = []
@@ -163,8 +164,7 @@ class ContentOut(IContentOut):
                 break
             self.logger.debug(f'sorted_finding: Index: {index_sorted}: {pformat(sorted_finding)}, \nfindings_str: {pformat(findings_str)},\nslide_info_str: {slide_info_str} ')
             sorted_findings_str += f'### Slide {sorted_finding[slide_info_str]}\n'+\
-                               f'Total slide penalties: **{sorted_finding[self.TOTAL_FINDINGS]}**\n\n'+\
-                               '| Finding type | Number findings | Weight | Total penalties |\n| --- | --- | --- | --- |\n'
+                                   '| Finding type | Number findings | Weight | Total penalties |\n| --- | --- | --- | --- |\n'
             for finding in sorted_finding[findings_str]:
                 self.logger.debug(f'finding: {pformat(finding)} ')
 

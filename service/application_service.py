@@ -26,13 +26,13 @@ class ApplicationService:
                  simulate_calls_only: bool, logging_level: logging, llm_utils: LLMUtils, context_length: int, enable_ocr: bool,\
                  selected_text_slide_requests: List, selected_artistic_slide_requests: List, \
                  selected_deck_requests: List, selected_paragraphs_requests: List, split_request_per_paragraph_deepness: int,
-                 model_name: str, context_path: str, pre_post_request_id: int, document_type: DocumentType, consider_bullets_for_crlf: bool= True):
+                 model_name: str, context_path: str, post_request_id: int, document_type: DocumentType, consider_bullets_for_crlf: bool= True):
 
         program_name = os.path.basename(sys.argv[0])
         logger = logging.getLogger(f'loggername_{program_name}')
         logging.basicConfig(encoding='utf-8', level=logging_level)
 
-        create_summary_findings: bool = llm_utils.set_pre_post_additional_request(pre_post_request_id)
+        create_summary_findings: bool = llm_utils.set_post_additional_request(post_request_id)
         path = Path(document_path)
         if not path.is_file():
             logger.error(f'The file {document_path} does not seem to exist ({os.getcwd()}).')

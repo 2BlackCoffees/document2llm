@@ -25,38 +25,38 @@ DOC2LLM_REQUESTS_SLIDE_TEXT: str= "DOC2LLM_REQUESTS_SLIDE_TEXT"
 DOC2LLM_REQUESTS_SLIDE_ARTISTIC: str= "DOC2LLM_REQUESTS_SLIDE_ARTISTIC"
 DOC2LLM_REQUESTS_DECK_TEXT: str= "DOC2LLM_REQUESTS_DECK_TEXT"
 DOC2LLM_REQUESTS_DOC: str= "DOC2LLM_REQUESTS_DOC"
-DOC2LLM_REQUESTS_PRE_POST_REQUEST: str= "DOC2LLM_REQUESTS_PRE_POST_REQUEST"
+DOC2LLM_REQUESTS_POST_REQUEST: str= "DOC2LLM_REQUESTS_POST_REQUEST"
 
 llm_utils = LLMUtils(["green", "purple"], 
                      os.getenv(DOC2LLM_REQUESTS_SLIDE_TEXT, default=""), 
                      os.getenv(DOC2LLM_REQUESTS_SLIDE_ARTISTIC, default=""), 
                      os.getenv(DOC2LLM_REQUESTS_DECK_TEXT, default=""),
                      os.getenv(DOC2LLM_REQUESTS_DOC, default=""),
-                     os.getenv(DOC2LLM_REQUESTS_PRE_POST_REQUEST, default=""))
+                     os.getenv(DOC2LLM_REQUESTS_POST_REQUEST, default=""))
 selected_artistic_slide_requests: List = [ idx for idx in range(len(llm_utils.get_all_slide_artistic_review_llm_requests())) ]
 selected_text_slide_requests: List = [ idx for idx in range(len(llm_utils.get_all_slide_text_review_llm_requests())) ]
 selected_deck_requests: List = [ idx for idx in range(len(llm_utils.get_all_deck_review_llm_requests())) ]
-pre_post_requests: List = [ idx for idx in range(len(llm_utils.get_all_pre_post_llm_requests())) ]
+post_requests: List = [ idx for idx in range(len(llm_utils.get_all_post_llm_requests())) ]
 selected_paragraphs_requests: List = [ idx for idx in range(len(llm_utils.get_all_word_review_llm_requests())) ]
 split_request_per_paragraph_deepness: int = -1
 context_length: int = 120000
-pre_post_request_id: int = 0
+post_request_id: int = 0
 only_slides = None
 document_type: DocumentType = DocumentType.ppt
 
 parser = argparse.ArgumentParser(prog=program_name, formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog=f'Apply LLM requests to content of files. Environment variable {DOC2LLM_REQUESTS_PRE_POST_REQUEST} embed requests with a pre and post information.')
+                                 epilog=f'Apply LLM requests to content of files. Environment variable {DOC2LLM_REQUESTS_POST_REQUEST} embed requests with post requests that will happen on the generated LLM text.')
 parser.add_argument('--from_document', type=str, help='Specify the document to open')
 parser.add_argument('--to_document', type=str, help='Specify the review document to create')
 parser.add_argument('--model_name', type=str, help=f'Specify the name of the LLM model to use. Default is {model_name}')
-parser.add_argument('--context_path', type=str, help='Path to a text file (whatever extension) where the contect of the document is described. If not orovided, headings will be used as context.')
+parser.add_argument('--context_path', type=str, help='Path to an optional text file (whatever extension) where the context of the document is described.')
 parser.add_argument('--detailed_analysis', action="store_true", help='Select a detailed analysis or high level one')
 parser.add_argument('--reviewer_properties', type=int, help=f'Specify a reviewer properties (Default is {reviewer_properties}): Consider for example Jeff Bezos for management review.')
 parser.add_argument('--debug', action="store_true", help='Set logging to debug')
 parser.add_argument('--force_top_p',type=float, help=f'Increases diversity from various probable outputs in results.')  # Add argument to increase diversity from various probable outputs in results
 parser.add_argument('--force_temperature', type=float, help=f'Higher temperature increases non sense and creativity while lower yields to focused and predictable results.')  # Add argument to increase non sense and creativity while lower yields to focused and predictable results
 parser.add_argument('--simulate_calls_only', action="store_true", help=f'Do not perform the calls to LLM: used for debugging purpose.')
-parser.add_argument('--pre_post_requests', type=int, help=f'Specify pre post requests to format the output from the following list: [[ {llm_utils.get_all_pre_post_llm_requests_and_ids_str()} ]], default is {pre_post_request_id}')
+parser.add_argument('--post_requests', type=int, help=f'Specify pre post requests to format the output from the following list: [[ {llm_utils.get_all_post_llm_requests_and_ids_str()} ]], default is {post_request_id}')
 parser.add_argument('--context_length', type=int, help=f'Specify the context length acceptable from the part of source file (without including the number of tokens of the request), default is {context_length}')
 parser.add_argument('--enable_ocr',  action="store_true", help=f'When specified will OCR any image found: This can require a lot of memory and is deactivated by default')
 
@@ -98,8 +98,8 @@ if args.context_path:
     context_path = args.context_path
 if args.reviewer_properties:
     reviewer_properties = args.reviewer_properties
-if args.pre_post_requests:
-    pre_post_request_id = args.pre_post_requests
+if args.post_requests:
+    post_request_id = args.post_requests
 
 elements_to_skip: List = []
 elements_to_keep: List = []
@@ -145,4 +145,4 @@ ApplicationService(from_document, to_document, elements_to_skip, elements_to_kee
                    reviewer_properties, args.simulate_calls_only, logging_level, llm_utils, context_length, args.enable_ocr,\
                    selected_text_slide_requests, selected_artistic_slide_requests, \
                    selected_deck_requests, selected_paragraphs_requests, split_request_per_paragraph_deepness,
-                   model_name, context_path, pre_post_request_id, document_type)
+                   model_name, context_path, post_request_id, document_type)
