@@ -106,6 +106,7 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
             shape_descriptions_text_only: list = [] 
             shape_descriptions_with_graphics: list = [] 
             for shape in slide.shapes:
+                #self.logger.debug(f"Analyzing shape: {shape} = {pformat([name for name in dir(shape) if name[0] != '_'], indent=2, width=250)}")
                 if shape.has_text_frame:
                     PPTReader.add_text_box_info(slide_number, shape, False, shape_descriptions_text_only, slide_size)
                     if self.want_selected_artistic_slide_requests:
@@ -139,6 +140,9 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
                         PPTReader.add_shape_type_info(slide_number, shape, True, shape_descriptions_with_graphics, slide_size)
  
             sorted_shapes: List = PPTReader.get_sorted_shapes_by_pos_y(shape_descriptions_text_only)
+            self.logger.debug(f'1. Not sorted shapes: {json.dumps(shape_descriptions_text_only, sort_keys=True, indent=2, separators=(",", ": "))}')
+            self.logger.debug(f'1. Sorted shapes: {json.dumps(sorted_shapes, sort_keys=True, indent=2, separators=(",", ": "))}')
+
             title_value: str = None
             shape_title: Dict = None
             title_found: bool = False
@@ -162,8 +166,8 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
                     shape_title = shape_description
                     shape_descriptions_text_only.append(shape_description)
 
-            self.logger.debug(f'Not sorted shapes: {json.dumps(shape_descriptions_text_only, sort_keys=True, indent=2, separators=(",", ": "))}')
-            self.logger.debug(f'Sorted shapes: {json.dumps(sorted_shapes, sort_keys=True, indent=2, separators=(",", ": "))}')
+            self.logger.debug(f'2. Not sorted shapes: {json.dumps(shape_descriptions_text_only, sort_keys=True, indent=2, separators=(",", ": "))}')
+            self.logger.debug(f'2. Sorted shapes: {json.dumps(sorted_shapes, sort_keys=True, indent=2, separators=(",", ": "))}')
             self.logger.debug(f'shape_title: {json.dumps(shape_title, sort_keys=True, indent=2, separators=(",", ": "))}')
 
             slide_shapes_content, title, slide_info, reduced_slide_text = self.__get_slide_details(sorted_shapes, slide_number, shape_title)
@@ -190,7 +194,7 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
                         {
                             self.TITLE_PARAMS: (2, f"Check of text content for slide {slide_number}"),
                             self.CHECKER_INSTANCE: TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
-                            self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), False, slide_info),
+                            self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), True, slide_info),
                             self.DONE_TEXT: f"Text slide request {slide_number} {title}"
                         }
                     )
@@ -200,7 +204,7 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
                         {
                             self.TITLE_PARAMS: (2, f"Check of artistic content for slide {slide_number}"),
                             self.CHECKER_INSTANCE: ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
-                            self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), False, slide_info),
+                            self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), True, slide_info),
                             self.DONE_TEXT: f"Artistic slide request {slide_number} {title}"
                         }
                     )

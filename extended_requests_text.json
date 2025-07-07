@@ -7,7 +7,7 @@
     },
     {
         "request_name": "Ensure convincing roadmap message",
-        "request": "Extract the roadmap out of the slide a customer would read. Challenge the roadmap you extracted and provide compelling advices for improvement.",
+        "request": "Extract the roadmap out of the slide. Compare it against what a customer would expect. Provide compelling suggestions for improvement.",
         "temperature": 0.6,
         "top_p": 0.6
     },
@@ -19,7 +19,7 @@
     },
     {
         "request_name": "Experts feedback checks",
-        "request": "Consider what the reviewer might say for the slide if they read it. Provide concrete and valuable suggest improvements.",
+        "request": "Consider what an expert in the field of the slide might say if he reads it. Provide concrete and valuable suggest improvements.",
         "temperature": 0.3,
         "top_p": 0.2
     },
@@ -31,19 +31,19 @@
     },
     {
         "request_name": "Slide title and openeing check",
-        "request": "Review the title and opening paragraph of each slide. Suggest improvements if they do not grab your attention.",
+        "request": "Review the title and opening paragraph of each slide for attention grabbing. Suggest improvements if they do not grab your attention.",
         "temperature": 0.3,
         "top_p": 0.2
     },
     {
         "request_name": "Slide audience check",
-        "request": "Read the slide from the perspective of a sceptic, supporter, and unfamiliar reader. Suggest concrete and valuable improvements.",
+        "request": "Read the slide from the perspective of a sceptic, supporter, and unfamiliar reader. Suggest concrete and valuable improvements for each of such reviewer.",
         "temperature": 0.6,
         "top_p": 0.6
     },
     {
         "request_name": "Slide weakness checks",
-        "request": "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness) and suggest improvements. Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns. Imagine we are in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
+        "request": "Identify the weakest parts of the slide (e.g., logic, structure, distinctiveness) and suggest improvements.",
         "temperature": 0.6,
         "top_p": 0.6
     },

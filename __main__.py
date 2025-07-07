@@ -14,9 +14,8 @@ from domain.llm_utils import LLMUtils, DocumentType
 program_name = os.path.basename(sys.argv[0])
 csv_ = partial(str.split, sep=',')
 
-reviewer_properties: str = "a SME able to first compose highly cost effective team and second is capable to setup very high quality focused teams" # Elon Musk
 from_document: str = ""
-model_name: str = "llama3.3-70b"
+model_name: str =   "gemma3-27b"# "llama3.3-70b" #
 to_document: str = None
 context_path: str = None
 create_summary_findings: bool = False
@@ -26,6 +25,19 @@ DOC2LLM_REQUESTS_SLIDE_ARTISTIC: str= "DOC2LLM_REQUESTS_SLIDE_ARTISTIC"
 DOC2LLM_REQUESTS_DECK_TEXT: str= "DOC2LLM_REQUESTS_DECK_TEXT"
 DOC2LLM_REQUESTS_DOC: str= "DOC2LLM_REQUESTS_DOC"
 DOC2LLM_REQUESTS_POST_REQUEST: str= "DOC2LLM_REQUESTS_POST_REQUEST"
+DOC2LLM_LOGGING_LEVEL: str= "DOC2LLM_LOGGING_LEVEL"
+# Logging is one of:
+#     'CRITICAL':   CRITICAL,
+#     'FATAL':      FATAL,
+#     'ERROR':      ERROR,
+#     'WARN':       WARNING,
+#     'WARNING':    WARNING,
+#     'INFO':       INFO,
+#     'DEBUG':      DEBUG,
+#     'NOTSET':     NOTSET,
+
+LLMUtils.DOC2LLM_LOGGING_LEVEL = DOC2LLM_LOGGING_LEVEL
+logger: logging.Logger = LLMUtils.get_logger(__name__)
 
 llm_utils = LLMUtils(["green", "purple"], 
                      os.getenv(DOC2LLM_REQUESTS_SLIDE_TEXT, default=""), 
@@ -40,23 +52,23 @@ post_requests: List = [ idx for idx in range(len(llm_utils.get_all_post_llm_requ
 selected_paragraphs_requests: List = [ idx for idx in range(len(llm_utils.get_all_word_review_llm_requests())) ]
 split_request_per_paragraph_deepness: int = -1
 context_length: int = 120000
-post_request_id: int = 0
+post_request_ids: List = []
 only_slides = None
 document_type: DocumentType = DocumentType.ppt
 
 parser = argparse.ArgumentParser(prog=program_name, formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 epilog=f'Apply LLM requests to content of files. Environment variable {DOC2LLM_REQUESTS_POST_REQUEST} embed requests with post requests that will happen on the generated LLM text.')
+                                 epilog=f'Apply LLM requests to content of files. Environment variable {DOC2LLM_REQUESTS_POST_REQUEST} embed requests with post requests that will happen on the generated LLM text. Variable {DOC2LLM_LOGGING_LEVEL} defines the logging level (DEBUG, INFO, WARN, ERROR).')
 parser.add_argument('--from_document', type=str, help='Specify the document to open')
 parser.add_argument('--to_document', type=str, help='Specify the review document to create')
 parser.add_argument('--model_name', type=str, help=f'Specify the name of the LLM model to use. Default is {model_name}')
 parser.add_argument('--context_path', type=str, help='Path to an optional text file (whatever extension) where the context of the document is described.')
 parser.add_argument('--detailed_analysis', action="store_true", help='Select a detailed analysis or high level one')
-parser.add_argument('--reviewer_properties', type=int, help=f'Specify a reviewer properties (Default is {reviewer_properties}): Consider for example Jeff Bezos for management review.')
-parser.add_argument('--debug', action="store_true", help='Set logging to debug')
+parser.add_argument('--reviewer_properties_path', type=str, help=f'Specify a file describing the reviewer properties (Default is {LLMUtils.get_default_reviewer_properties()}): Consider for example Jeff Bezos for management review.')
+#parser.add_argument('--debug', action="store_true", help='Set logging to debug')
 parser.add_argument('--force_top_p',type=float, help=f'Increases diversity from various probable outputs in results.')  # Add argument to increase diversity from various probable outputs in results
 parser.add_argument('--force_temperature', type=float, help=f'Higher temperature increases non sense and creativity while lower yields to focused and predictable results.')  # Add argument to increase non sense and creativity while lower yields to focused and predictable results
 parser.add_argument('--simulate_calls_only', action="store_true", help=f'Do not perform the calls to LLM: used for debugging purpose.')
-parser.add_argument('--post_requests', type=int, help=f'Specify pre post requests to format the output from the following list: [[ {llm_utils.get_all_post_llm_requests_and_ids_str()} ]], default is {post_request_id}')
+parser.add_argument('--post_requests', type=csv_, help=f'Specify one or more post requests to format the output from the following list: [[ {llm_utils.get_all_post_llm_requests_and_ids_str()} ]], default is {post_request_ids}')
 parser.add_argument('--context_length', type=int, help=f'Specify the context length acceptable from the part of source file (without including the number of tokens of the request), default is {context_length}')
 parser.add_argument('--enable_ocr',  action="store_true", help=f'When specified will OCR any image found: This can require a lot of memory and is deactivated by default')
 
@@ -80,10 +92,12 @@ doc_parser.add_argument('--paragraphs_requests', type=csv_, help=f'Specify chape
 
 args = parser.parse_args()
 
-logging_level = logging.INFO
 
-if args.debug:
-    logging_level = logging.DEBUG
+
+# if args.debug:
+#     logging_level = logging.DEBUG
+#     logging.basicConfig(encoding='utf-8', level=logging_level)
+
 if args.from_document:
     from_document = args.from_document
 if args.model_name:
@@ -96,10 +110,10 @@ if args.to_document:
     to_document = args.to_document
 if args.context_path:
     context_path = args.context_path
-if args.reviewer_properties:
-    reviewer_properties = args.reviewer_properties
+if args.reviewer_properties_path:
+    reviewer_properties_path = args.reviewer_properties_path
 if args.post_requests:
-    post_request_id = args.post_requests
+    post_request_ids = llm_utils.get_list_parameters(args.post_requests)
 
 elements_to_skip: List = []
 elements_to_keep: List = []
@@ -142,7 +156,7 @@ elif args.command == DocumentType.ppt.name or document_type == DocumentType.ppt:
 
 llm_utils.set_document_type(document_type)
 ApplicationService(from_document, to_document, elements_to_skip, elements_to_keep, args.detailed_analysis, \
-                   reviewer_properties, args.simulate_calls_only, logging_level, llm_utils, context_length, args.enable_ocr,\
+                   reviewer_properties_path, args.simulate_calls_only, llm_utils, context_length, args.enable_ocr,\
                    selected_text_slide_requests, selected_artistic_slide_requests, \
                    selected_deck_requests, selected_paragraphs_requests, split_request_per_paragraph_deepness,
-                   model_name, context_path, post_request_id, document_type)
+                   model_name, context_path, post_request_ids, document_type)

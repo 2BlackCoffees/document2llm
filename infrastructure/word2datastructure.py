@@ -193,7 +193,6 @@ class WordToDatastructure(ADocumentToDatastructure):
                 current_heading_style: str = doc_part.style.name.lower()
                 if current_heading_style.startswith('heading'):
                     current_heading_deepness: int = self.__get_heading_deepness(current_heading_style)
-                    self.logger.info(f"paragraph_number: {paragraph_number}")
                     paragraph_number = self.__increase_paragraph_number(paragraph_number, current_heading_deepness)
                     self.logger.debug(f'paragraph_number: {paragraph_number}, self.paragraphs_to_skip: {self.paragraphs_to_skip}, self.paragraphs_to_keep: {self.paragraphs_to_keep}')
                     if (self.__paragraph_number_caught(paragraph_number, self.paragraphs_to_skip) == True):

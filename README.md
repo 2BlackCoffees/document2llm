@@ -42,13 +42,14 @@ Currently, for power point presentations, if you exceed the context length, the 
 In word documents instead, the context length is implemented leveraging a trivial token number processing approach.
 
 ## Prerequisites
-Ensure that Python3.11+, openai, pptx and docx python libraries are installed. Run `pip install -r document2llm/requirements.txt`.
-OCR of images belonging to the document is a WIP. That will require to install additional libraries: Run `pip install -r document2llm/requirements.ocr.txt`.
+Create a virtual environment (https://www.packetcoders.io/faster-pip-installs-with-uv/): `uv venv` followed by `source .venv/bin/activate`
+Ensure that Python3.11+, openai, pptx and docx python libraries are installed. Run `uv pip install -r document2llm/requirements.txt`.
+OCR of images belonging to the document is a WIP. That will require to install additional libraries: Run `uv pip install -r document2llm/requirements.ocr.txt`.
 
 ## Usage
 To use Document2LLM, run the following command:
 ```bash
-python document2llm -h
+uv run document2llm -h
 ```
 This will display the help message with available options.
 

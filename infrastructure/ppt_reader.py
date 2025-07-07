@@ -10,7 +10,7 @@ from typing import Tuple
 
 class PPTReader:
     @staticmethod
-    def is_paragraph(md_text: str, paragraph_start_min_word_length: str = 3, paragraph_start_min_word_numbers: str = 1) -> bool:
+    def is_paragraph(md_text: str, paragraph_start_min_word_length: str = 2, paragraph_start_min_word_numbers: str = 1) -> bool:
         text:str = md_text.replace('**', '')
         minwords: int = int(paragraph_start_min_word_numbers)  
         regexp: str = f'(\\w{{{paragraph_start_min_word_length},}}\\b\\s+){{{minwords},}}\w{{{paragraph_start_min_word_length},}}\\b'
@@ -110,7 +110,6 @@ class PPTReader:
         shape_details: Dict =  {
             "shape": {
                 "slide_number": slide_number,
-
             }
         }
         shape_details["shape"]["text"] = PPTReader.__get_md_formatted_string(shape, 'text_frame')
@@ -198,4 +197,5 @@ class PPTReader:
     @staticmethod  
     def get_sorted_shapes_by_pos_y(shapes: List) -> List:
         return sorted(shapes, key = lambda shape_dict: shape_dict['y'])
+    
 

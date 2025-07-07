@@ -8,6 +8,7 @@ import os
 from pprint import pprint, pformat
 from pathlib import Path
 from enum import Enum
+import logging
 
 class DocumentType(Enum):
     ppt = 1
@@ -15,11 +16,11 @@ class DocumentType(Enum):
 
 # TODO refactor with OOP: We need a word and a PPT specialisation
 class LLMUtils:
-    post_additional_request_id: int = 0
+    DOC2LLM_LOGGING_LEVEL: str = "DOC2LLM_LOGGING_LEVEL"
+    post_additional_request_ids: List = []
     CREATE_SUMMARY_FINDINGS = "create_summary_findings"
     def __init__(self, color_palette: List, \
-                 slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, word_requests_filename: str, additional_requests_filename: str,
-                 ):
+                 slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, word_requests_filename: str, additional_requests_filename: str):
         color_palette.append("transparent")
         slide_text_external_requests: List = self.__read_json(slide_text_filename)
         slide_artistic_external_requests: List = self.__read_json(slide_artistic_filename)
@@ -27,6 +28,7 @@ class LLMUtils:
         word_review_external_requests: List = self.__read_json(word_requests_filename)
         additional_requests: List = self.__read_json(additional_requests_filename)
         self.document_type = DocumentType.ppt
+        self.logger = LLMUtils.get_logger(__name__)
 
         self.additional_context: str = None
         self.slide_artistic_content_review_llm_requests = [
@@ -52,10 +54,13 @@ class LLMUtils:
         self.slide_artistic_content_review_llm_requests.extend(slide_artistic_external_requests)
 
         self.slide_text_review_llm_requests = [
-            {'request_name': 'Spell check and Clarity checks', 
-                'request': 'Perform a detailed spell check to ensure no spelling errors exist. '\
-                           'Verify that all terms used are clear and concise for any reader.'\
-                           'Identify any sections or slides that may be confusing or unclear, suggest improvements.',
+            {'request_name': 'Spell check', 
+                'request': 'Perform a detailed spell check to ensure no spelling errors exist: Verify all words and the grammatic in depth. ',
+                'temperature': 0.3, 'top_p': 0.2 
+            },
+            {'request_name': 'Clarity check', 
+                'request': 'Verify that all terms used are clear and concise for any reader.'\
+                           'Identify any section that may be confusing or unclear, suggest improvements.',
                 'temperature': 0.3, 'top_p': 0.2 
             },
             {'request_name': 'Slide Redability checks',
@@ -72,9 +77,12 @@ class LLMUtils:
         self.slide_text_review_llm_requests.extend(slide_text_external_requests)
 
         self.word_review_llm_requests = [
-            {'request_name': 'Spell check and Clarity checks', 
-                'request': 'Perform a detailed spell check to ensure no spelling errors exist. '\
-                           'Verify that all terms used are clear and concise for any reader.'\
+            {'request_name': 'Spell check', 
+                'request': 'Perform a detailed spell check to ensure no spelling errors exist: Verify all words and the grammatic in depth. ',
+                'temperature': 0.3, 'top_p': 0.2 
+            },
+            {'request_name': 'Clarity checks', 
+                'request': 'Verify that all terms used are clear and concise for any reader.'\
                            'Identify any sections or paragraphs that may be confusing or unclear, suggest improvements.',
                 'temperature': 0.3, 'top_p': 0.2 
             },
@@ -157,15 +165,9 @@ class LLMUtils:
         self.deck_review_llm_requests.extend(deck_text_external_requests)
 
         self.post_additional_requests = [
-                        {
-                "request_name": "None", 
-                "request": "",
-                self.CREATE_SUMMARY_FINDINGS: False
-
-            },
             {
                 "request_name": "Summary finding", 
-                "request": "- The below text is the result of a LLM analysis, provide 5 to 7 detailed findings including suggestions.\n\n- Follow this template: (* **Describe Finding Type**: Detail the finding). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ). - Summarize in a table the 10 most important finding types that you found: \n\n| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding Type: Not a summary but the type of finding) | (Number of such findings) | (Weight of this finding. It is an integer ranging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n",
+                "request": "- The below text is the result of a LLM analysis, provide 5 to 7 detailed findings including suggestions.\n\n- Follow this template: * **(Describe Finding Type)**: (Detail the finding). \n\n    * **(Suggestion Type)**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions for improvement: Use ** the suggestion ** instead of _ The current finding _ ). - Summarize in a table the 10 most important finding types that you found: \n\n| Finding | Number | Weight |\n| --- | --- | --- |\n| (Finding Type: Not a summary but the type of finding) | (Number of such findings) | (Weight of this finding. It is an integer ranging between 0: Very superficial and has almost no impact to 10: Very important and must be corrected ASAP) |\n",
                 'temperature': 0.6, 'top_p': 0.6, 
                 self.CREATE_SUMMARY_FINDINGS: True
             },
@@ -185,14 +187,12 @@ class LLMUtils:
                                 self.word_review_llm_requests,
                                 self.deck_review_llm_requests, 
                                 self.slide_text_review_llm_requests, 
-                                self.slide_artistic_content_review_llm_requests
+                                self.slide_artistic_content_review_llm_requests,
+                                self.post_additional_requests
                              ]:
             for request in request_group:
                 for request_type in ['request_name', 'request']:
                     request[request_type] = self.resolve_env_var(request[request_type])
-        for request in self.post_additional_requests:
-            for request_type in ['request_name', 'request']:
-                request[request_type] = self.resolve_env_var(request[request_type])
 
     def resolve_env_var(self, request) -> str:
         list_replacements: List = []
@@ -211,19 +211,31 @@ class LLMUtils:
 
     def set_document_type(self, document_type: DocumentType) -> None:
         self.document_type = document_type
-        
-    def get_post_additional_request(self) -> str:
-        if self.post_additional_request_id >= 0 and self.post_additional_request_id < len(self.post_additional_requests):
-            return [ self.post_additional_requests[self.post_additional_request_id] ]
-        return []
-    
-    def set_post_additional_request(self, post_additional_request_id: int) -> bool:
-        self.post_additional_request_id = post_additional_request_id
 
-        if post_additional_request_id >= 0 and post_additional_request_id < len(self.post_additional_requests):
-            post_request: dict = self.post_additional_requests[post_additional_request_id]
-            if self.CREATE_SUMMARY_FINDINGS in post_request: 
-                return post_request[self.CREATE_SUMMARY_FINDINGS]
+    def get_post_additional_requests_from_name(self, requested_post_request_name: List) -> List:
+        post_requests_found: List = []
+        for index, post_request in enumerate(self.post_additional_requests):
+            existing_request_name = post_request['request_name']
+            if existing_request_name == requested_post_request_name:
+                # If the name exists multiple times, then it will be applied multiple times
+                post_requests_found.append(post_request)
+        return post_requests_found
+
+
+
+    def get_post_additional_requests(self) -> List:
+        return [ self.post_additional_requests[post_additional_request_id] \
+                for post_additional_request_id in self.post_additional_request_ids \
+                    if post_additional_request_id >= 0 and post_additional_request_id < len(self.post_additional_requests) ]
+    
+    def set_post_additional_requests(self, post_additional_request_ids: List) -> bool:
+        self.post_additional_request_ids = post_additional_request_ids
+
+        for post_additional_request_id in post_additional_request_ids:
+            if post_additional_request_id >= 0 and post_additional_request_id < len(self.post_additional_requests):
+                post_request: dict = self.post_additional_requests[post_additional_request_id]
+                if self.CREATE_SUMMARY_FINDINGS in post_request: 
+                    return post_request[self.CREATE_SUMMARY_FINDINGS]
             
         return False
 
@@ -357,7 +369,7 @@ class LLMUtils:
         return return_str
 
     # TODO: This method will have to be better integrated to provide graphic or table details according to the request 
-    def get_llm_instructions(self, request_has_graphical: bool = False):
+    def get_format_description(self, request_has_graphical: bool = False):
         instructions: str = None
         if self.document_type == DocumentType.ppt:
             instructions = f"""Consider the following json for text boxes or groups of shapes the json information represents shapes of a pptx slide, your analysis shall take into account the full text present in the slide that can be extracted from the provided JSON as follows (Please NEVER EVER mention this JSON in your response, mention you are analyzing a slide instead):
@@ -428,3 +440,14 @@ class LLMUtils:
         regexp: str = f'(\\w{{{paragraph_start_min_word_length},}}\\b\\s+){{{minwords},}}\w{{{paragraph_start_min_word_length},}}\\b'
         paragraph_found: bool = (re.search(regexp, text) is not None)
         return paragraph_found
+    
+    @staticmethod
+    def get_logger(logger_name: str) -> logging.Logger:
+        logging_level: str = os.getenv(LLMUtils.DOC2LLM_LOGGING_LEVEL, default=logging.INFO)
+        logger: logging.Logger = logging.getLogger(logger_name)
+        logging.basicConfig(encoding='utf-8', level=logging_level)
+        return logger
+
+    @staticmethod
+    def get_default_reviewer_properties() -> str:
+        return "a SME able to first compose highly cost effective team and second is capable to setup very high quality focused teams" 

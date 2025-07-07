@@ -25,8 +25,8 @@ class ContentOut(IContentOut):
         self.file_content: List = []
         self.file_title = f'# {file_title}'
         self.file_description = file_description
-        self.last_title_level = 1
-        self.title_level_number: Dict = {}
+        #self.last_title_level = 1
+        self.title_level_number: List = []
         self.max_nb_important_findings = max_nb_important_findings
         self.create_summary_findings = create_summary_findings
         self.logger = logger
@@ -37,41 +37,56 @@ class ContentOut(IContentOut):
         with open(self.log_file_name, "w", encoding="utf-8") as file:
             
             file.write(f'{self.file_title}\n')
+            file.write(f'## Table of content\n')
+            most_important_findings: str = ""
+            title_findings: str = ""
             if self.create_summary_findings:
                 most_important_findings: str = self.__most_important_findings(self.max_nb_important_findings)
                 if len(most_important_findings) > 0:
-                    file.write(f'## Most important findings\n{most_important_findings}')
-                else:
-                    file.write(f'** Looks good: No most important findings could be found!!! **')
+                    title_findings: str = "Most important findings"
+                    self.__add_title_in_toc(title_level=1, title_name=title_findings, prepend_index=0)
 
-            file.write(f'## Table of content\n')
             for toc in self.toc:
                 file.write(f'{toc}\n')
+                
+            if len(most_important_findings) > 0:
+                file.write(f'## {title_findings}\n{most_important_findings}\n')
+
             for line in self.file_content:
                 file.write(f'\n{line}\n')           
 
         self.temporary_file.close()
         pathlib.Path(self.temporary_file_name).unlink(missing_ok=True)
 
-    def add_title(self, title_level: int, title_name: str):
-        new_level:int = title_level + 1
-        if new_level > self.last_title_level or new_level not in self.title_level_number:
-            self.title_level_number[new_level] = 1
-        else:
-            self.title_level_number[new_level] += 1
-        title_anchor: str = re.sub(r'\s', '-', title_name.lower()) 
-        title: str = f'{"#" * (title_level + 1)} {title_name}'
-        self.__append_log(title)
-        self.toc.append(f'{"    " * max(title_level - 1, 0)}{self.title_level_number[new_level]}. [{title_name}](#{title_anchor})\n')
+    def __add_title_in_toc(self, title_level: int, title_name: str, prepend_index: int = -1):
+        new_level:int = title_level - 1
 
-        self.last_title_level = new_level
+        if new_level > len(self.title_level_number) - 1:
+            self.title_level_number + [0] * (self.title_level_number - new_level)
+        else:
+            if new_level < len(self.title_level_number) - 1:
+                self.title_level_number.pop()
+        self.title_level_number[new_level] += 1
+        title_level = self.title_level_number[new_level] if prepend_index < 0 else 0
+
+        title_anchor: str = re.sub(r'[\.\?\(\)\[\]\/!"\$&:;,<>\|]', '', re.sub(r'\s', '-', title_name.lower()))
+        toc_entry: str = f'{"    " * max(new_level, 0)}{title_level}. [{title_name}](#{title_anchor})\n'
+        if prepend_index >= 0:
+            self.toc.insert(prepend_index, toc_entry)
+        else:
+            self.toc.append(toc_entry)
+
+    def add_title(self, title_level: int, title_name: str):
+        title: str = f'{"#" * (title_level)} {title_name}'
+        self.__append_log(title)
+        self.__add_title_in_toc(title_level, title_name)
 
     def __append_log(self, data: str):
         self.file_content.append(data)
         self.temporary_file.write(f"{data}\n")
         
     def document(self, line: str) -> str:
-        md_text: str = '\n'.join([ re.sub(r'^#+', '#' * (self.last_title_level + 1), message) \
+        md_text: str = '\n'.join([ re.sub(r'^#+', '#' * (len(self.title_level_number)), message) \
                                    for message in line.split('\\n')])
         self.__append_log(md_text)
 
@@ -131,7 +146,7 @@ class ContentOut(IContentOut):
             self.findings[slide_info] = slide_findings_with_total
             self.logger.debug(f'Updated finding for {slide_info}:\n {len(self.findings)} total finding: {pformat(self.findings)}')
 
-    def __most_important_findings(self, max_findings: int) -> str:
+    def __most_important_findings(self, max_segregation_findings: int = 5, max_findings_per_seggregation: int = 10) -> str:
         slide_sorting_generation: List = []
         findings_str: str = 'findings'
         slide_info_str: str = 'slide_info'
@@ -160,12 +175,16 @@ class ContentOut(IContentOut):
         self.logger.debug(f'sorted_findings: {pformat(sorted_findings)}')
 
         for index_sorted, sorted_finding in enumerate(sorted_findings):
-            if index_sorted >= max_findings:
+            if index_sorted >= max_segregation_findings:
                 break
             self.logger.debug(f'sorted_finding: Index: {index_sorted}: {pformat(sorted_finding)}, \nfindings_str: {pformat(findings_str)},\nslide_info_str: {slide_info_str} ')
-            sorted_findings_str += f'### Slide {sorted_finding[slide_info_str]}\n'+\
+            title_name: str = f"Slide {sorted_finding[slide_info_str]}"
+            self.__add_title_in_toc(title_level=2, title_name=title_name, prepend_index=index_sorted)
+            sorted_findings_str += f'### {title_name}\n\n'+\
                                    '| Finding type | Number findings | Weight | Total penalties |\n| --- | --- | --- | --- |\n'
-            for finding in sorted_finding[findings_str]:
+            for index_finding, finding in enumerate(sorted_finding[findings_str]):
+                if index_finding >= max_findings_per_seggregation:
+                    break
                 self.logger.debug(f'finding: {pformat(finding)} ')
 
                 sorted_findings_str += f'| {finding[self.NAME_FINDING_KEY]}'+\

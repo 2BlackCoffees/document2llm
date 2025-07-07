@@ -8,13 +8,16 @@ from logging import Logger
 from domain.icontent_out import IContentOut
 from domain.allm_access import AbstractLLMAccess
 from domain.llm_utils import LLMUtils
-
+from pprint import pformat
 import traceback
+import re
+
 class ADocumentToDatastructure(ABC):
     content_out: IContentOut = None
     logger: Logger = None
     llm_access: AbstractLLMAccess = None
     flush_on_exception: bool = True
+    DISAMBIGUITE_TITLE: int = 1
     def __init__(self, logger: Logger, content_out: IContentOut, 
                  llm_access: AbstractLLMAccess, llm_utils: LLMUtils):
         self.content_out = content_out
@@ -49,29 +52,29 @@ class ADocumentToDatastructure(ABC):
 
     def __print_initial_request(self, response: Dict, print_title: bool, slide_info: str) -> List:
 
-                if print_title: 
-                    self.content_out.add_title(2, f"{response['request_name']} (temperature: {response['temperature']}, top_p: {response['top_p']})")
-                else:
-                    self.content_out.document(f"**{response['request_name']}** (temperature: {response['temperature']}, top_p: {response['top_p']})")
-                self.content_out.document_response(slide_info, response['response'])        
+        if print_title: 
+            request_cleaned: str =  response['request_name'] #re.sub(r'[\(\),\.]*', '', response['request_name'])
+            self.content_out.add_title(2, f"{request_cleaned} (temperature: {response['temperature']}, top_p: {response['top_p']}) ({ADocumentToDatastructure.DISAMBIGUITE_TITLE})")
+            ADocumentToDatastructure.DISAMBIGUITE_TITLE += 1
+        else:
+            self.content_out.document(f"**{response['request_name']}** (temperature: {response['temperature']}, top_p: {response['top_p']})")
+        self.content_out.document_response(slide_info, response['response'])        
 
     def __send_llm_requests_and_expand_output(self, content_to_check: List, print_title: bool, slide_info: str) -> None:
             
-            result: List = self.llm_access.check(content_to_check)
+            result: List = self.llm_access.check(content_to_check, True)
             for response in result:
                 self.__print_initial_request(response, print_title, slide_info)
-                # if print_title: 
-                #     self.content_out.add_title(2, f"{response['request_name']} (temperature: {response['temperature']}, top_p: {response['top_p']})")
-                # else:
-                #     self.content_out.document(f"**{response['request_name']}** (temperature: {response['temperature']}, top_p: {response['top_p']})")
-                # self.content_out.document_response(slide_info, response['response'])
-                post_request: str = self.llm_utils.get_post_additional_request()
-                self.logger.info(f"post_request: {post_request}")
-                if len(post_request) > 0:
-                    #self.content_out.add_title(title_rank, title_str)
-                    post_process_checker: IChecker = PostProcessChecker(self.llm_utils, None, f' (Post Process)', f' (Post Process)')
+                additional_requests: List = []
+                if 'post_request_name' in response and response['post_request_name'] is not None:
+                    for post_request_name in response['post_request_name'].split(','):
+                        additional_requests.extend(self.llm_utils.get_post_additional_requests_from_name(post_request_name))
+                    self.logger.info(f"From request {response['request_name']}, preparing post request: response['{post_request_name}']: \n{additional_requests} for response: {response}")
+                post_process_checker: IChecker = PostProcessChecker(self.llm_utils, None, f' (Post Process)', f' (Post Process)', additional_requests)
+                     
+                if len(post_process_checker.get_all_requests()) > 0:
                     self.llm_access.set_checker(post_process_checker)
-                    post_process_result: List = self.llm_access.check(response['response'])
+                    post_process_result: List = self.llm_access.check(response['response'], False)
                     for post_process_response in post_process_result:
                         self.__print_initial_request(post_process_response, print_title, 'Post process: ' + slide_info)
                    
@@ -81,7 +84,7 @@ class ADocumentToDatastructure(ABC):
             self.logger.debug(f"Executing request : {index + 1} / {len(data_structure)}")
             
             title_rank, title_str = self._get_title_rank_title_str_as_tuple(data)
-            self.logger.info(f"{' ' * (title_rank * 2)}{'=' * 20} Processing {title_str} >>> {'=' * 20}  >> ")
+            self.logger.info(f"{' ' * (title_rank * 2)}{'=' * 20} Processing {title_str} >>> {'=' * 20}  >> (Request {index + 1} / {len(data_structure)})")
             self.content_out.add_title(title_rank, title_str)
 
             instance_checker: IChecker = self._get_checker_instance(data)
