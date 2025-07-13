@@ -1,0 +1,14 @@
+[
+    {
+        "request_name": "RLS creation", 
+        "request": "The below text is the result of a LLM analysis.\n * Provide the team in terms or ressource loading sheet following the below template ensuring the number columns related to the months are equals to the timeline expected for the project.\n* Ensure the table provided will depict the ramp up providing one column per month: \n    | Location | Role | High level skills | Grade | (First month: Example 2025-01) | (Second month: Example 2025-02) | (Add a column for all aditional months needed) |\n    | --- | --- | --- | --- | --- | --- | --- |\n    | (OnSite, OnShore, NearShore or OffShore) | (Role name, Example DevOps) | (Example: Project Management, Technical details like Java, Python, ..., testing frameworks, ... SAFe certified, Cloud certified, ...) | (Grade, Example: A) | (Example 20%) | (Example 100%) | (Example 50%) |\nDo not repeat the text, provide only the RLS. ",
+        "temperature": 0.3, "top_p": 0.3 
+    },
+    {
+        "request_name": "Risk Management Postprocessing", 
+        "request": "- The below text is the result of a LLM analysis, provide 5 to 7 detailed risks including suggestions.\n\n- Follow this template: (* **Describe Risk Type**: Detail the Risk). \n\n(    * **Suggestion Type**): (As a numbered list: Provide 2 to 4 outstanding **CONCRETE** suggestions to mitigate the risk: Use ** the suggestion ** instead of _ The current finding _ ). - Summarize in a table the 10 most important risk types that you found: \n\n| Risk |Likelyhood | Weight |\n| --- | --- | --- |\n| (Risk Type: Not a summary but the type of finding) | (Likelihood of the risk between 0 and 100, 0 means impossible, 100 means will happen for sure), Example 15 | (Weight of this risk. It is an integer ranging between 0: Very superficial and has almost no impact to 100: Very important and must be corrected ASAP), Example 50 |\n",
+        "temperature": 0.3, "top_p": 0.3 ,
+        "create_summary_findings": "True"
+    }
+ 
+ ]

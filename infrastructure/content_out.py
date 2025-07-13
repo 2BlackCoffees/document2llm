@@ -39,37 +39,37 @@ class ContentOut(IContentOut):
             file.write(f'{self.file_title}\n')
             file.write(f'## Table of content\n')
             most_important_findings: str = ""
-            title_findings: str = ""
             if self.create_summary_findings:
-                most_important_findings: str = self.__most_important_findings(self.max_nb_important_findings)
-                if len(most_important_findings) > 0:
-                    title_findings: str = "Most important findings"
-                    self.__add_title_in_toc(title_level=1, title_name=title_findings, prepend_index=0)
+                most_important_findings = self.__most_important_findings(self.max_nb_important_findings)
+                self.logger.debug(f"len(most_important_findings)={len(most_important_findings)}\nmost_important_findings={most_important_findings}")
 
             for toc in self.toc:
                 file.write(f'{toc}\n')
-                
-            if len(most_important_findings) > 0:
-                file.write(f'## {title_findings}\n{most_important_findings}\n')
 
             for line in self.file_content:
                 file.write(f'\n{line}\n')           
+
+            self.logger.debug(f"len(most_important_findings)={len(most_important_findings)}\nmost_important_findings={most_important_findings}")
+            if len(most_important_findings) > 0:
+                file.write(f'{most_important_findings}\n')
 
         self.temporary_file.close()
         pathlib.Path(self.temporary_file_name).unlink(missing_ok=True)
 
     def __add_title_in_toc(self, title_level: int, title_name: str, prepend_index: int = -1):
         new_level:int = title_level - 1
-
+        
+        self.logger.debug(f"Before: self.title_level_number: {self.title_level_number}, {title_name}")
         if new_level > len(self.title_level_number) - 1:
-            self.title_level_number + [0] * (self.title_level_number - new_level)
+            self.title_level_number = self.title_level_number + [0] * (len(self.title_level_number) - new_level + 1)
         else:
             if new_level < len(self.title_level_number) - 1:
-                self.title_level_number.pop()
+                self.title_level_number = self.title_level_number[:len(self.title_level_number) - new_level - 1]
+        self.logger.debug(f"After: self.title_level_number: {self.title_level_number}, {title_name}")
         self.title_level_number[new_level] += 1
-        title_level = self.title_level_number[new_level] if prepend_index < 0 else 0
+        title_level = ".".join([str(level) for level in self.title_level_number]) if prepend_index < 0 or title_level > 1 else "0"
 
-        title_anchor: str = re.sub(r'[\.\?\(\)\[\]\/!"\$&:;,<>\|]', '', re.sub(r'\s', '-', title_name.lower()))
+        title_anchor: str = re.sub(r'[\.\?\(\)\[\]\/!"\$&:;,<>\|]', '', re.sub(r'\s+', '-', title_name.strip().lower()))
         toc_entry: str = f'{"    " * max(new_level, 0)}{title_level}. [{title_name}](#{title_anchor})\n'
         if prepend_index >= 0:
             self.toc.insert(prepend_index, toc_entry)
@@ -171,27 +171,34 @@ class ContentOut(IContentOut):
 
         
         sorted_findings_str: str = ""
-        sorted_findings: List = reversed(sorted(slide_sorting_generation, key = lambda findings: findings[self.TOTAL_FINDINGS]))
+        sorted_findings: List = list(reversed(sorted(slide_sorting_generation, key = lambda findings: findings[self.TOTAL_FINDINGS])))
         self.logger.debug(f'sorted_findings: {pformat(sorted_findings)}')
+        
+        self.logger.debug(f'Number findings found: {len(sorted_findings)}\n{pformat(sorted_findings)}')
+        if len(sorted_findings) > 0:
+            sorted_findings_str="Most important findings"
+            self.__add_title_in_toc(title_level=1, title_name=sorted_findings_str)
+            sorted_findings_str = f"## {sorted_findings_str}\n\n"
 
-        for index_sorted, sorted_finding in enumerate(sorted_findings):
-            if index_sorted >= max_segregation_findings:
-                break
-            self.logger.debug(f'sorted_finding: Index: {index_sorted}: {pformat(sorted_finding)}, \nfindings_str: {pformat(findings_str)},\nslide_info_str: {slide_info_str} ')
-            title_name: str = f"Slide {sorted_finding[slide_info_str]}"
-            self.__add_title_in_toc(title_level=2, title_name=title_name, prepend_index=index_sorted)
-            sorted_findings_str += f'### {title_name}\n\n'+\
-                                   '| Finding type | Number findings | Weight | Total penalties |\n| --- | --- | --- | --- |\n'
-            for index_finding, finding in enumerate(sorted_finding[findings_str]):
-                if index_finding >= max_findings_per_seggregation:
+            for index_sorted, sorted_finding in enumerate(sorted_findings):
+                if index_sorted >= max_segregation_findings:
                     break
-                self.logger.debug(f'finding: {pformat(finding)} ')
+                self.logger.debug(f'sorted_finding: Index: {index_sorted}: {pformat(sorted_finding)}, \nfindings_str: {pformat(findings_str)},\nslide_info_str: {slide_info_str} ')
+                title_name: str = f"Slide {sorted_finding[slide_info_str]}"
+                self.__add_title_in_toc(title_level=2, title_name=title_name)
+                sorted_findings_str += f'### {title_name}\n\n'+\
+                                    '| Finding type | Number findings | Weight | Total penalties |\n| --- | --- | --- | --- |\n'
+                for index_finding, finding in enumerate(sorted_finding[findings_str]):
+                    if index_finding >= max_findings_per_seggregation:
+                        break
+                    self.logger.debug(f'finding: {pformat(finding)} ')
 
-                sorted_findings_str += f'| {finding[self.NAME_FINDING_KEY]}'+\
-                                       f' | {finding[self.NUMBER_FINDING_KEY]}'+\
-                                       f' | {finding[self.WEIGHT_FINDING_KEY]}'+\
-                                       f' | {finding[self.NUMBER_FINDING_KEY] * finding[self.WEIGHT_FINDING_KEY]} |\n'
-        self.logger.debug(f'Generated findings: {sorted_findings_str}')
+                    sorted_findings_str += f'| {finding[self.NAME_FINDING_KEY]}'+\
+                                        f' | {finding[self.NUMBER_FINDING_KEY]}'+\
+                                        f' | {finding[self.WEIGHT_FINDING_KEY]}'+\
+                                        f' | {finding[self.NUMBER_FINDING_KEY] * finding[self.WEIGHT_FINDING_KEY]} |\n'
+                    self.logger.debug(f'Current generated finding: {sorted_findings_str}')
+        self.logger.debug(f'All generated findings: {sorted_findings_str}')
         return sorted_findings_str
                    
 

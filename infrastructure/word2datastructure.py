@@ -56,12 +56,7 @@ class WordToDatastructure(ADocumentToDatastructure):
         if m:
             return int(m.group('heading_deepness')) - 1
         return -1
-
-    def __get_number_tokens(self, string: str) -> int:
-        # Currently using a very approximate approach where we consider 2 to 3 characters per token
-        # Instead a tokenizer of HuggingFace or similar should be used instead
-        return len(re.sub(r'\s+', '', string)) / 2.8
-    
+  
     def __increase_paragraph_number(self, paragraph_number: str, heading_deepness: int) -> List:
         paragraph_number_list = paragraph_number.split('.')
         if heading_deepness < len(paragraph_number_list):
@@ -203,7 +198,7 @@ class WordToDatastructure(ADocumentToDatastructure):
                         self.logger.info(f"Paragraph {paragraph_number} being skipped because not expected to be kept as per request.")
                         continue
 
-                    if self.__get_number_tokens(text_for_request + last_text_found) < self.context_length_source_document and \
+                    if self.llm_utils.get_number_tokens(text_for_request + last_text_found) < self.context_length_source_document and \
                        current_heading_deepness > latest_saved_heading_deepness and \
                        current_heading_deepness > self.split_request_per_paragraph_deepness - 1:
                         text_for_request += last_text_found
@@ -235,7 +230,7 @@ class WordToDatastructure(ADocumentToDatastructure):
         self.logger.debug(f"Prepared document:\n{data_structure}")
         self.logger.info(f"Number of requests to LLM:{len(data_structure)}")
         for data in data_structure:
-            self.logger.info(f'{data[self.TITLE_PARAMS][1]}: {int(self.__get_number_tokens(data[self.LLM_REQUEST_PARAMS][0]) * 10000 / self.context_length_source_document)/100.0}% context length used')
+            self.logger.info(f'{data[self.TITLE_PARAMS][1]}: {int(self.llm_utils.get_number_tokens(data[self.LLM_REQUEST_PARAMS][0]) * 10000 / self.context_length_source_document)/100.0}% context length used')
 
         return data_structure
     

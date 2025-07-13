@@ -180,19 +180,11 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
 
             slide_info: str = f'{slide_number} {title}'
             if self.want_selected_text_slide_requests or self.want_selected_artistic_slide_requests:
-                data_structure.append(
-                    {
-                        self.TITLE_PARAMS: (1, f"Analyzing slide {slide_info}"),
-                        self.CHECKER_INSTANCE: None,
-                        self.LLM_REQUEST_PARAMS: None,
-                        self.DONE_TEXT: None
-                    }
-                )
 
                 if self.want_selected_text_slide_requests:
                     data_structure.append(
                         {
-                            self.TITLE_PARAMS: (2, f"Check of text content for slide {slide_number}"),
+                            self.TITLE_PARAMS: (1, f"Check of text content for slide {slide_number}"),
                             self.CHECKER_INSTANCE: TextSlideChecker(self.llm_utils, self.selected_text_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
                             self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), True, slide_info),
                             self.DONE_TEXT: f"Text slide request {slide_number} {title}"
@@ -202,7 +194,7 @@ class PowerPointToDataStructure(ADocumentToDatastructure):
                 if self.want_selected_artistic_slide_requests:
                     data_structure.append(
                         {
-                            self.TITLE_PARAMS: (2, f"Check of artistic content for slide {slide_number}"),
+                            self.TITLE_PARAMS: (1, f"Check of artistic content for slide {slide_number}"),
                             self.CHECKER_INSTANCE: ArtisticSlideChecker(self.llm_utils, self.selected_artistic_slide_requests, f' (Slide {slide_idx + 1})', f' (Slide {slide_idx + 1})'),
                             self.LLM_REQUEST_PARAMS: (slide_content["shapes"].copy(), True, slide_info),
                             self.DONE_TEXT: f"Artistic slide request {slide_number} {title}"

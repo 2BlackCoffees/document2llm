@@ -1,6 +1,7 @@
 """
 @author Jean-Philippe Ulpiano
 """
+from __future__ import annotations
 from typing import Dict, List
 import json
 import re
@@ -13,12 +14,22 @@ import logging
 class DocumentType(Enum):
     ppt = 1
     doc = 2
+    md = 3
 
+class UtilsLogger:
+    DOC2LLM_LOGGING_LEVEL: str = "DOC2LLM_LOGGING_LEVEL"
+    @staticmethod
+    def get_logger(logger_name: str) -> logging.Logger:
+        logging_level: str = os.getenv(UtilsLogger.DOC2LLM_LOGGING_LEVEL, default=logging.INFO)
+        logger: logging.Logger = logging.getLogger(logger_name)
+        logging.basicConfig(encoding='utf-8', level=logging_level, format='%(asctime)s:%(levelname)s: %(message)s')
+        return logger
+    
 # TODO refactor with OOP: We need a word and a PPT specialisation
 class LLMUtils:
-    DOC2LLM_LOGGING_LEVEL: str = "DOC2LLM_LOGGING_LEVEL"
     post_additional_request_ids: List = []
     CREATE_SUMMARY_FINDINGS = "create_summary_findings"
+    logger = UtilsLogger.get_logger(__name__)
     def __init__(self, color_palette: List, \
                  slide_text_filename: str, slide_artistic_filename: str, slide_deck_filename: str, word_requests_filename: str, additional_requests_filename: str):
         color_palette.append("transparent")
@@ -28,7 +39,6 @@ class LLMUtils:
         word_review_external_requests: List = self.__read_json(word_requests_filename)
         additional_requests: List = self.__read_json(additional_requests_filename)
         self.document_type = DocumentType.ppt
-        self.logger = LLMUtils.get_logger(__name__)
 
         self.additional_context: str = None
         self.slide_artistic_content_review_llm_requests = [
@@ -441,13 +451,13 @@ class LLMUtils:
         paragraph_found: bool = (re.search(regexp, text) is not None)
         return paragraph_found
     
-    @staticmethod
-    def get_logger(logger_name: str) -> logging.Logger:
-        logging_level: str = os.getenv(LLMUtils.DOC2LLM_LOGGING_LEVEL, default=logging.INFO)
-        logger: logging.Logger = logging.getLogger(logger_name)
-        logging.basicConfig(encoding='utf-8', level=logging_level)
-        return logger
 
     @staticmethod
     def get_default_reviewer_properties() -> str:
         return "a SME able to first compose highly cost effective team and second is capable to setup very high quality focused teams" 
+
+    @staticmethod
+    def get_number_tokens(string: str) -> int:
+        # Currently using a very approximate approach where we consider 2 to 3 characters per token
+        # Instead a tokenizer of HuggingFace or similar should be used instead
+        return len(re.sub(r'\s+', '', string)) / 2.8

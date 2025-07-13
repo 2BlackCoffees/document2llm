@@ -1,0 +1,130 @@
+[
+    {
+        "request_name": "Assumptions extraction",
+        "request": "**Provide all assumptions**\n\nConsidering the technical expectations and commercial details outlined in the document, I need all assumptions that I should consider.",
+        "temperature": 0.5,
+        "top_p": 0.5
+    },
+    {
+        "request_name": "Summarize",
+        "request": "**Provide a very clear summary**\n\nConsidering the technical expectations and commercial details outlined in the document, I need a comprehensive Summary",
+        "temperature": 0.5,
+        "top_p": 0.5
+    },
+    {
+
+        "request_name": "Propose a team", 
+        "request": "**Team Composition and Cost Optimization**\n\nConsidering the technical expectations and commercial details outlined in the document, I need a comprehensive proposal for a steady-state team that can deliver the best possible cost while ensuring high-quality results. The team should be optimized to meet the project's requirements, and I require detailed information on each team member.\n\n**Team Member Details**\n\nFor each team member, please provide the following information:\n\n1. **Role Name**: Specify the role, such as Project Manager, Transition Manager, Solutions Architect, DevOps, Software Developer, etc.\n2. **Grade**: Assign a grade between A (Fresher) and H (Senior Solutions Architect or Program Manager), where:\n* A: Fresher\n * B: Junior\n* C: Senior (3-5 years of experience)\n* D: Tech Lead (4-8 years of experience)\n * E: Senior Tech Lead or Architect\n * F: Senior Architect\n * G: Solutions Architect or Program Manager\n * H: Senior Solutions Architect or Program Manager\n3. **Location**: Specify the location for each team member, considering the following options:\n * OnSite: Only if explicitly requested in the document\n * OnShore: If proximity to the customer is crucial or requested in the document\n * NearShore: For data access restrictions, such as GDPR\n * OffShore: For cost reduction, aiming for maximum offshoring while meeting project requirements\n\n**Job Description and Technical Skills**\n\nFor each role and seniority level, provide a detailed job description that includes:\n\n1. Technical skills: Programming languages, cloud providers, frameworks, and other relevant technical expertise\n2. Management skills: Relevant experience, leadership abilities, and communication skills\n\n**Project Timeline and Transition**\n\nExtract and provide the following details from the document:\n\n1. **Start Date**\n2. **End Date**\n3. **Transition Duration**\n\n**Ramp-up and Team Effectiveness**\n\nDescribe the plan for ramping up the team to ensure the most effective collaboration and delivery. Outline the strategies for:\n\n1. Knowledge transfer\n2. Team building and communication\n3. Task allocation and workload management\n\n**Team Proposal Evaluation**\n\nEvaluate the proposed team composition by highlighting the advantages and drawbacks, focusing on the project's specific requirements and constraints. Avoid generic or unnecessary descriptions, and provide insightful analysis of the team's strengths and weaknesses.\n\nBy providing a comprehensive response to these requirements, you will help me understand the optimal team composition and cost structure for the project, ensuring the best possible outcome. \n",
+        "temperature": 0.5,
+        "top_p": 0.5,
+        "post_request_name": "RLS creation"
+    },
+    {
+
+        "request_name": "Create a transition plan",
+        "request": "**Comprehensive Transition Plan**  Develop a detailed and tailored transition plan that outlines the specific steps to be taken to transition services from the existing provider to the new provider, ensuring minimal disruption and optimal knowledge transfer. The plan should include, but not be limited to, the following phases:  1. **OnBoarding**: Describe the process for onboarding the new provider, including any necessary training, documentation, and access provisioning. 2. **Knowledge Transfer (KT)**: Outline the approach for transferring knowledge from the existing provider to the new provider, including any documentation, workshops, or meetings. 3. **Shadow**: Explain the plan for the new provider to shadow the existing provider, including the duration, scope, and objectives of this phase. 4. **Reverse Shadow**: Describe the process for the existing provider to shadow the new provider, ensuring a smooth handover and minimal disruption. 5. **Steady State**: Outline the plan for the new provider to assume full responsibility for the services, including any ongoing support, monitoring, and maintenance. **Team Member Grading**  For each team member involved in the transition process, assign a grade between A and H, based on the following criteria:  * A: Fresher (0-2 years of experience) * B: Junior (2-3 years of experience) * C: Senior (3-5 years of experience) * D: Tech Lead (4-8 years of experience) * E: Senior Tech Lead or Architect (8-12 years of experience) * F: Senior Architect (12-15 years of experience) * G: Solutions Architect or Program Manager (15+ years of experience) * H: Senior Solutions Architect or Program Manager (15+ years of experience)  **Key Stakeholder Identification**  Identify the key stakeholders who will be involved in the transition process, including their roles, responsibilities, and expectations. This may include representatives from KPIT, the customer, and the incumbent (if applicable).  **Communication Plan**  Develop a comprehensive communication plan to ensure that all stakeholders are informed and engaged throughout the transition process. The plan should include:  * Communication channels and protocols * Frequency and format of updates * Stakeholder engagement and feedback mechanisms * Issue escalation and resolution procedures  By providing a detailed and tailored transition plan, RASIC matrix, team member grading, key stakeholder identification, and communication plan, you will help ensure a smooth and successful transition of services from the existing provider to the new provider. **RASIC Matrix**  Provide a RASIC details involving KPIT, the customer, and the incumbent if it exists. The RASIC should clearly outline the responsibilities and roles of each party during the transition process foolowing the description: Responsible (R): The person or team that performs the task, Accountable (A): The individual who has final authority over the task is responsible for its overall success, Supportive (S): Individuals who assist the person responsible by providing resources, tools, or expertise, Informed (I): Individuals who need to be kept updated on the progress or decisions related to the task, Consulted (C): Subject matter experts or stakeholders whose input is sought before or during task execution. At least but not only limited to them, the following topics must be considered in the RASIC: * Customer  Accesses (Network, Cloud, CICD accesses, System availability, …), * Team availability from outgoing SMEs, * Availability of documentation and relevant artifacts, * Knowledge Transfer, * Documentation Updates, * Shadow, * Reverse Shadow, * Cloud infrastructure design or development, * Transition Handoff Approval",
+        "temperature": 0.5,
+        "top_p": 0.5,
+        "post_request_name": "RLS creation"
+
+    },
+    {
+        "request_name": "Risk Management",
+        "request": "Conduct a risk assessment to identify potential risks. * Develop a risk management plan that outlines the steps that will be taken to mitigate risks.\n* Identify risk owners who will be responsible for mitigating risks. \n* Associate a risk with a weight between 1 and 100 (Explain your choice). \n* Associate a risk with the number of probable occurence (explain why these occurences might happen and their likelyhood)",
+        "temperature": 0.5,
+        "top_p": 0.5,
+        "post_request_name": "Risk Management Postprocessing"
+
+    },
+    {
+        "request_name": "Prepare questions",
+        "request": "I need questions to clarify all points that are unclear. Refrain from mundane questions. Provide questions for any unclear technical scope. Provide questions for any commercial details that are unclear. Provide questions to understand what parts of the project shall be T&M or FP.",
+        "temperature": 0.5,
+        "top_p": 0.5
+
+    },
+    {
+        "request_name": "{DOC2LLM_SUMMARY_TYPE, Technical} summary of the document",
+        "request": "Provide a {DOC2LLM_SUMMARY_TYPE, technical} summary of the document to fill one slide.",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "FTEs summary of the document",
+        "request": "From the required FTEs I need the following table: \n|Role name|Location|Experience|Skills|\n|---|---|---|---|\n|Role as outlined in the document|(Location should be ONLY one of the following according to what makes most of sense: Onsite, OnShore, NearShore, OffShore)|Number of years of experience to ensure the person fulfilling the role will provide excellent results, consider only one seniority level according to the role description| Main skills required as outlined in the document|",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Commercial summary of the document",
+        "request": "Provide a commercial summary of the document to fill one slide.",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Ensure convincing roadmap message",
+        "request": "Extract the roadmap out of the document a customer would read. Challenge the roadmap you extracted and provide compelling advices for improvement.",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Verify the what",
+        "request": "Ensure that the 'WHAT' is clearly described and not overwhelmed by the 'HOW'.",
+        "temperature": 0.3,
+        "top_p": 0.2
+    },
+    {
+        "request_name": "Experts feedback checks",
+        "request": "Consider what the reviewer might say for the document if they read it. Provide concrete and valuable suggest improvements.",
+        "temperature": 0.3,
+        "top_p": 0.2
+    },
+    {
+        "request_name": "Document memorability check",
+        "request": "Summarize the main point of document in less than two sentences and provide the sentences. Suggest concrete and valuable improvements for the document to ensure the 2 summarized sentences are easy to summarize from the document and easy to remember.",
+        "temperature": 0.3,
+        "top_p": 0.2
+    },
+    {
+        "request_name": "Document title and opening check",
+        "request": "Review the title and opening paragraph of each slide. Suggest improvements if they do not grab your attention.",
+        "temperature": 0.3,
+        "top_p": 0.2
+    },
+    {
+        "request_name": "Document audience check",
+        "request": "Read the slide from the perspective of a sceptic, supporter, and unfamiliar reader. Suggest concrete and valuable improvements.",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Document weakness checks",
+        "request": "Identify the weakest parts of the document (e.g., logic, structure, distinctiveness) and suggest improvements. Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns. Imagine we are in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Document view from a harsh critic checks",
+        "request": "Imagine what a harsh critic might say and provide concrete valuable improvement suggestions to address these concerns.",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Document view from a debate critic checks",
+        "request": "Imagine we are in a debate. Your job is to argue in opposition. What are your top 3 counterpoints for the text?",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Roadmap",
+        "request": "Describe the detailed technical roadmap for innovation that appears from the document content. Propose suggestion for improvement assuming a harsh critic wanted to make it disruptive.",
+        "temperature": 0.6,
+        "top_p": 0.6
+    },
+    {
+        "request_name": "Verify the Flow",
+        "request": "Ensure that the flow in the document brings a comprehensive message that will not confuse the reader but instead brings a clear message regarding what the document depicts.",
+        "temperature": 0.6,
+        "top_p": 0.6
+    }
+]

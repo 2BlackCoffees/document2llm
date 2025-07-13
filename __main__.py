@@ -8,7 +8,7 @@ import logging
 from functools import partial
 from typing import List, Dict
 from service.application_service import ApplicationService, DocumentType
-from domain.llm_utils import LLMUtils, DocumentType
+from domain.llm_utils import LLMUtils, DocumentType, UtilsLogger
 
 
 program_name = os.path.basename(sys.argv[0])
@@ -36,8 +36,8 @@ DOC2LLM_LOGGING_LEVEL: str= "DOC2LLM_LOGGING_LEVEL"
 #     'DEBUG':      DEBUG,
 #     'NOTSET':     NOTSET,
 
-LLMUtils.DOC2LLM_LOGGING_LEVEL = DOC2LLM_LOGGING_LEVEL
-logger: logging.Logger = LLMUtils.get_logger(__name__)
+UtilsLogger.DOC2LLM_LOGGING_LEVEL = DOC2LLM_LOGGING_LEVEL
+logger: logging.Logger = UtilsLogger.get_logger(__name__)
 
 llm_utils = LLMUtils(["green", "purple"], 
                      os.getenv(DOC2LLM_REQUESTS_SLIDE_TEXT, default=""), 
@@ -55,6 +55,7 @@ context_length: int = 120000
 post_request_ids: List = []
 only_slides = None
 document_type: DocumentType = DocumentType.ppt
+reviewer_properties_path: str = None
 
 parser = argparse.ArgumentParser(prog=program_name, formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=f'Apply LLM requests to content of files. Environment variable {DOC2LLM_REQUESTS_POST_REQUEST} embed requests with post requests that will happen on the generated LLM text. Variable {DOC2LLM_LOGGING_LEVEL} defines the logging level (DEBUG, INFO, WARN, ERROR).')
@@ -90,9 +91,13 @@ doc_parser.add_argument('--only_paragraphs', type=csv_, help='Specify paragraphs
 doc_parser.add_argument('--split_request_per_paragraph_deepness', type=int, help='Specify paragraphs deepness to use to split requests, per default, no split is done (document split happens only per context_length)')
 doc_parser.add_argument('--paragraphs_requests', type=csv_, help=f'Specify chapers requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_word_review_llm_requests_and_ids_str()} ]], default is {selected_paragraphs_requests}')
 
+doc_parser = subparsers.add_parser(DocumentType.md.name, epilog=f'Markdown analysis: The environment variable {DOC2LLM_REQUESTS_DOC} can point to a JSON file for additional requests.')
+doc_parser.add_argument('--skip_paragraphs', type=csv_, help='Specify paragraphs to skip: 1,2.1,3: Cannot be used with only_paragraphs')
+doc_parser.add_argument('--only_paragraphs', type=csv_, help='Specify paragraphs to keep: 2,3.4,5: Cannot be used with skip_paragraphs')
+doc_parser.add_argument('--split_request_per_paragraph_deepness', type=int, help='Specify paragraphs deepness to use to split requests, per default, no split is done (document split happens only per context_length)')
+doc_parser.add_argument('--paragraphs_requests', type=csv_, help=f'Specify chapers requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_word_review_llm_requests_and_ids_str()} ]], default is {selected_paragraphs_requests}')
+
 args = parser.parse_args()
-
-
 
 # if args.debug:
 #     logging_level = logging.DEBUG
@@ -118,8 +123,8 @@ if args.post_requests:
 elements_to_skip: List = []
 elements_to_keep: List = []
 
-if args.command == DocumentType.doc.name:
-    document_type = DocumentType.doc
+if args.command == DocumentType.doc.name or args.command == DocumentType.md.name:
+    document_type = DocumentType.doc if args.command == DocumentType.doc.name else DocumentType.md
     if args.paragraphs_requests:
         selected_paragraphs_requests = LLMUtils.get_list_parameters(args.paragraphs_requests)
     if args.skip_paragraphs:
