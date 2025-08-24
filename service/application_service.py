@@ -13,6 +13,7 @@ from domain.adocument2datastructure import ADocumentToDatastructure
 from infrastructure.powerpoint2datastructure import PowerPointToDataStructure
 from infrastructure.word2datastructure import WordToDatastructure
 from infrastructure.md2datastructure import MDToDatastructure
+from infrastructure.pdf2datastructure import PDFToDatastructure
 from infrastructure.llm_access import LLMAccess
 from infrastructure.llm_access_detailed import LLMAccessDetailed
 from infrastructure.llm_access_simulate import LLMAccessSimulateCalls
@@ -97,6 +98,10 @@ class ApplicationService:
                  selected_paragraphs_requests, split_request_per_paragraph_deepness, llm_access,  context_length, enable_ocr)
         elif document_type == DocumentType.md:
             document_to_llm = MDToDatastructure(document_path, elements_to_skip, elements_to_keep,\
+                 ApplicationService.logger, content_out, llm_utils, \
+                 selected_paragraphs_requests, split_request_per_paragraph_deepness, llm_access,  context_length)
+        elif document_type == DocumentType.pdf:
+            document_to_llm = PDFToDatastructure(document_path, elements_to_skip, elements_to_keep,\
                  ApplicationService.logger, content_out, llm_utils, \
                  selected_paragraphs_requests, split_request_per_paragraph_deepness, llm_access,  context_length)
 

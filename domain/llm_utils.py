@@ -15,6 +15,7 @@ class DocumentType(Enum):
     ppt = 1
     doc = 2
     md = 3
+    pdf = 4
 
 class UtilsLogger:
     DOC2LLM_LOGGING_LEVEL: str = "DOC2LLM_LOGGING_LEVEL"

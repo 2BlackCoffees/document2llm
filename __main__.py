@@ -91,11 +91,19 @@ doc_parser.add_argument('--only_paragraphs', type=csv_, help='Specify paragraphs
 doc_parser.add_argument('--split_request_per_paragraph_deepness', type=int, help='Specify paragraphs deepness to use to split requests, per default, no split is done (document split happens only per context_length)')
 doc_parser.add_argument('--paragraphs_requests', type=csv_, help=f'Specify chapers requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_word_review_llm_requests_and_ids_str()} ]], default is {selected_paragraphs_requests}')
 
+
 doc_parser = subparsers.add_parser(DocumentType.md.name, epilog=f'Markdown analysis: The environment variable {DOC2LLM_REQUESTS_DOC} can point to a JSON file for additional requests.')
 doc_parser.add_argument('--skip_paragraphs', type=csv_, help='Specify paragraphs to skip: 1,2.1,3: Cannot be used with only_paragraphs')
 doc_parser.add_argument('--only_paragraphs', type=csv_, help='Specify paragraphs to keep: 2,3.4,5: Cannot be used with skip_paragraphs')
 doc_parser.add_argument('--split_request_per_paragraph_deepness', type=int, help='Specify paragraphs deepness to use to split requests, per default, no split is done (document split happens only per context_length)')
 doc_parser.add_argument('--paragraphs_requests', type=csv_, help=f'Specify chapers requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_word_review_llm_requests_and_ids_str()} ]], default is {selected_paragraphs_requests}')
+
+# PDF parser
+pdf_parser = subparsers.add_parser(DocumentType.pdf.name, epilog=f'PDF analysis: The environment variable {DOC2LLM_REQUESTS_DOC} can point to a JSON file for additional requests.')
+pdf_parser.add_argument('--skip_paragraphs', type=csv_, help='Specify paragraphs to skip: 1,2.1,3: Cannot be used with only_paragraphs')
+pdf_parser.add_argument('--only_paragraphs', type=csv_, help='Specify paragraphs to keep: 2,3.4,5: Cannot be used with skip_paragraphs')
+pdf_parser.add_argument('--split_request_per_paragraph_deepness', type=int, help='Specify paragraphs deepness to use to split requests, per default, no split is done (document split happens only per context_length)')
+pdf_parser.add_argument('--paragraphs_requests', type=csv_, help=f'Specify chapters requests to process: 1,3-5,7 from the following list: [[ {llm_utils.get_all_word_review_llm_requests_and_ids_str()} ]], default is {selected_paragraphs_requests}')
 
 args = parser.parse_args()
 
@@ -123,8 +131,13 @@ if args.post_requests:
 elements_to_skip: List = []
 elements_to_keep: List = []
 
-if args.command == DocumentType.doc.name or args.command == DocumentType.md.name:
-    document_type = DocumentType.doc if args.command == DocumentType.doc.name else DocumentType.md
+if args.command == DocumentType.doc.name or args.command == DocumentType.md.name or args.command == DocumentType.pdf.name:
+    if args.command == DocumentType.doc.name:
+        document_type = DocumentType.doc
+    elif args.command == DocumentType.md.name:
+        document_type = DocumentType.md
+    elif args.command == DocumentType.pdf.name:
+        document_type = DocumentType.pdf
     if args.paragraphs_requests:
         selected_paragraphs_requests = LLMUtils.get_list_parameters(args.paragraphs_requests)
     if args.skip_paragraphs:
