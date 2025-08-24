@@ -185,7 +185,10 @@ class WordToDatastructure(ADocumentToDatastructure):
                         root = ET.fromstring(xmlstr) 
                         image_found = True
 
-                current_heading_style: str = doc_part.style.name.lower()
+                if hasattr(doc_part.style, "name"):
+                    current_heading_style: str = doc_part.style.name.lower()
+                else:
+                    current_heading_style: str = "No Heading Style found"
                 if current_heading_style.startswith('heading'):
                     current_heading_deepness: int = self.__get_heading_deepness(current_heading_style)
                     paragraph_number = self.__increase_paragraph_number(paragraph_number, current_heading_deepness)
